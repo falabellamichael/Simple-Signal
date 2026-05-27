@@ -13,6 +13,13 @@
   - Support for `LM_API_TOKEN` and `SIGNAL_SHARE_LM_STUDIO_API_TOKEN` in `.env` config.
   - Automatic loopback checking over both `localhost` and `127.0.0.1`.
 
+### Improvements
+- 🎨 **Theme Aesthetics Refinement**:
+  - Upgraded all 8 themes using 256-color ANSI codes to match their names.
+  - Polished the `ocean` theme to use pure, rich deep-blue shades (`\033[38;5;33m`, `\033[38;5;75m`) rather than green/cyan.
+  - Adjusted the `light` theme to use bright silver/white colors (`\033[38;5;255m`, `\033[1;38;5;231m`) so that it is not dark on dark terminals.
+  - Polished the `forest` theme to use earthy greens (`\033[38;5;107m`, `\033[38;5;34m`) and cedar/wood brown (`\033[38;5;94m`).
+
 ## [1.1.0] - Model Selector Update
 
 ### New Features

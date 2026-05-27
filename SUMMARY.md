@@ -3,7 +3,7 @@
 ## What You Have Created
 
 A complete, stylish command-line AI inference tool with:
-- Beautiful terminal output with 3 themes
+- Beautiful terminal output with 8 premium themes
 - Interactive chat mode
 - Local AI model support via Hugging Face transformers
 - Demo mode for exploration without a model
