@@ -53,6 +53,137 @@ class ConfigUpdate(BaseModel):
 class ModelSelect(BaseModel):
     model: str
 
+async def get_gpu_info_data():
+    """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
+    gpu_list = []
+    
+    # 1. PyTorch CUDA
+    try:
+        import torch
+        if torch.cuda.is_available():
+            for i in range(torch.cuda.device_count()):
+                raw_name = torch.cuda.get_device_name(i)
+                clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
+                gpu_list.append({
+                    "name": clean_name,
+                    "backend": "CUDA (PyTorch)",
+                    "identifier": f"cuda:{i}",
+                    "status": "Available"
+                })
+    except Exception:
+        pass
+
+    # 2. PyTorch DirectML
+    try:
+        import torch_directml
+        for i in range(torch_directml.device_count()):
+            raw_name = torch_directml.device_name(i)
+            clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
+            gpu_list.append({
+                "name": clean_name,
+                "backend": "DirectML (PyTorch)",
+                "identifier": f"privateuseone:{i}",
+                "status": "Available"
+            })
+    except Exception:
+        pass
+        
+    # 3. Always query Windows controllers to find actual AMD/NVIDIA/Intel hardware name
+    try:
+        import subprocess
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
+        out = subprocess.check_output(
+            ["wmic", "path", "win32_VideoController", "get", "name"], 
+            text=True, 
+            startupinfo=startupinfo,
+            stderr=subprocess.DEVNULL
+        )
+        lines = [line.strip().replace('\x00', '').replace('\u0000', '').strip() for line in out.split("\n") if line.strip() and "Name" not in line]
+        
+        for name in lines:
+            if not name:
+                continue
+            # Deduplicate with already loaded ML backends
+            if any(name.lower() in g["name"].lower() or g["name"].lower() in name.lower() for g in gpu_list):
+                continue
+                
+            backend_compat = "Vulkan / DirectML"
+            if "nvidia" in name.lower():
+                backend_compat = "CUDA / Vulkan / DirectML"
+            elif "amd" in name.lower() or "radeon" in name.lower():
+                backend_compat = "Vulkan (LM Studio) / DirectML"
+            elif "intel" in name.lower():
+                backend_compat = "Vulkan / DirectML"
+                
+            gpu_list.append({
+                "name": name,
+                "backend": backend_compat,
+                "identifier": "Physical Card",
+                "status": "Detected"
+            })
+    except Exception:
+        pass
+        
+    if not gpu_list:
+        gpu_list.append({
+            "name": "Standard Display Adapter",
+            "backend": "CPU Fallback",
+            "identifier": "Default",
+            "status": "Active"
+        })
+        
+    return gpu_list
+
+async def stream_gpu_table():
+    """Format and stream GPU detection as an aligned ASCII text table"""
+    yield "🔌 Querying system for graphics hardware details...\n\n"
+    await asyncio.sleep(0.3)
+    
+    gpus = await get_gpu_info_data()
+    
+    # Column configuration widths (total characters to fit inside 80cols cleanly)
+    col_widths = {
+        "name": 32,
+        "backend": 24,
+        "id": 14,
+        "status": 10
+    }
+    
+    # Build ASCII dividers
+    separator = "+" + "-"*(col_widths["name"]+2) + "+" + "-"*(col_widths["backend"]+2) + "+" + "-"*(col_widths["id"]+2) + "+" + "-"*(col_widths["status"]+2) + "+\n"
+    header = f"| {'GPU Device Name'.ljust(col_widths['name'])} | {'Backend Support'.ljust(col_widths['backend'])} | {'Device ID'.ljust(col_widths['id'])} | {'Status'.ljust(col_widths['status'])} |\n"
+    
+    yield separator
+    yield header
+    yield separator
+    await asyncio.sleep(0.1)
+    
+    for gpu in gpus:
+        name = gpu["name"]
+        if len(name) > col_widths["name"]:
+            name = name[:col_widths["name"]-3] + "..."
+            
+        backend = gpu["backend"]
+        if len(backend) > col_widths["backend"]:
+            backend = backend[:col_widths["backend"]-3] + "..."
+            
+        dev_id = gpu["identifier"]
+        if len(dev_id) > col_widths["id"]:
+            dev_id = dev_id[:col_widths["id"]-3] + "..."
+            
+        status = gpu["status"]
+        if len(status) > col_widths["status"]:
+            status = status[:col_widths["status"]-3] + "..."
+            
+        row = f"| {name.ljust(col_widths['name'])} | {backend.ljust(col_widths['backend'])} | {dev_id.ljust(col_widths['id'])} | {status.ljust(col_widths['status'])} |\n"
+        yield row
+        yield separator
+        await asyncio.sleep(0.04)
+
 async def stream_search_results(query: str):
     """Perform a web search via DuckDuckGo and stream findings chunk-by-chunk"""
     yield "🔍 Searching the web for: " + query + "...\n\n"
@@ -257,6 +388,13 @@ async def chat_endpoint(payload: ChatPayload):
             stream_search_results(query),
             media_type="text/plain; charset=utf-8"
         )
+    
+    # Check for custom GPU command
+    if last_user_message.strip().lower() == "/gpu":
+        return StreamingResponse(
+            stream_gpu_table(),
+            media_type="text/plain; charset=utf-8"
+        )
         
     return StreamingResponse(
         generate_chat_stream(messages),
@@ -312,6 +450,12 @@ async def get_models():
             return {"connected": False, "models": [], "error": str(e)}
             
     return {"connected": False, "models": [], "info": "LM Studio API not detected running locally."}
+
+@app.get("/api/system/gpu")
+async def get_gpu_info():
+    """Endpoint exposing the raw GPU hardware list as JSON"""
+    gpus = await get_gpu_info_data()
+    return {"gpus": gpus}
 
 @app.post("/api/model")
 async def select_model(data: ModelSelect):

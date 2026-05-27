@@ -26,6 +26,7 @@ const sidebar = document.getElementById('terminal-sidebar');
 const sessionsList = document.getElementById('sessions-list');
 const toggleHistoryBtn = document.getElementById('toggle-history-btn');
 const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+const gpuInfoBtn = document.getElementById('gpu-info-btn');
 
 // Initialize Web UI
 document.addEventListener('DOMContentLoaded', async () => {
@@ -51,6 +52,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Sidebar toggle buttons
     toggleHistoryBtn.addEventListener('click', toggleSidebar);
     closeSidebarBtn.addEventListener('click', collapseSidebar);
+    
+    // GPU Info button
+    gpuInfoBtn.addEventListener('click', handleGpuQuery);
     
     // Clicking anywhere in the terminal screen focuses the text input (CLI feel)
     terminalScreen.addEventListener('click', (e) => {
@@ -653,4 +657,11 @@ function collapseSidebar() {
 
 function expandSidebar() {
     sidebar.classList.remove('collapsed');
+}
+
+// 4. GPU Information Command Trigger
+function handleGpuQuery() {
+    if (isStreaming) return;
+    chatInput.value = '/gpu';
+    submitMessage();
 }
