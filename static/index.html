@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Signal CLI Web</title>
+    
+    <!-- KaTeX CSS & JS for LaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Custom styling -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-theme="dark">
+    <div class="terminal-container">
+        <!-- Terminal Header with Buttons and Controls -->
+        <header class="terminal-header">
+            <div class="window-controls">
+                <span class="control-dot close"></span>
+                <span class="control-dot minimize"></span>
+                <span class="control-dot maximize"></span>
+            </div>
+            <div class="terminal-title">simple-signal-cli - web session</div>
+            <div class="terminal-actions">
+                <!-- Model Select -->
+                <div class="select-wrapper" id="model-select-wrapper" style="display: none;">
+                    <label for="model-selector">Model:</label>
+                    <select id="model-selector">
+                        <option value="">Default API Model</option>
+                    </select>
+                </div>
+                <!-- Theme Select -->
+                <div class="select-wrapper">
+                    <label for="theme-selector">Theme:</label>
+                    <select id="theme-selector">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="matrix">Matrix</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="forest">Forest</option>
+                        <option value="dracula">Dracula</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Terminal Body -->
+        <main class="terminal-body" id="terminal-screen">
+            <!-- Welcome Message -->
+            <div class="system-message">
+                <span class="ascii-art">
+   _____ _                 _         _____ _                   _ 
+  / ____(_)               | |       / ____(_)                 | |
+ | (___  _  __ _ _ __   __| |______| (___  _  __ _ _ __   __| |
+  \___ \| |/ _` | '_ \ / _` |______|\___ \| |/ _` | '_ \ / _` |
+  ____) | | (_| | | | | (_| |      ____) | | (_| | | | | (_| |
+ |_____/|_|\__, |_| |_|\__,_|     |_____/|_|\__, |_| |_|\__,_|
+            __/ |                            __/ |           
+           |___/                            |___/            
+                </span>
+                <p>Welcome to <strong>Simple Signal CLI Web</strong>.</p>
+                <p>Type messages to chat with local AI. Write LaTeX formulas in standard math syntax (e.g. <code>$E = mc^2$</code> or <code>$$a^2 + b^2 = c^2$$</code>).</p>
+                <p>Supported commands: <code>/search &lt;query&gt;</code> to search the web, <code>/clear</code> to clear screen.</p>
+                <p class="separator">--------------------------------------------------</p>
+            </div>
+        </main>
+        
+        <!-- Interactive Prompt Area -->
+        <footer class="terminal-footer">
+            <span class="prompt-symbol">user@signal:~$</span>
+            <div class="input-container">
+                <textarea id="chat-input" rows="1" placeholder="Type a message or command..." autofocus></textarea>
+                
+                <!-- Action Button: Send or Stop -->
+                <button id="action-btn" type="button" aria-label="Send message">
+                    <!-- Send Icon (Paper Airplane) -->
+                    <svg class="send-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <!-- Stop Icon (Square) -->
+                    <svg class="stop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Script application -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

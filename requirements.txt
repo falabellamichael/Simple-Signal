@@ -21,3 +21,9 @@ torch-directml
 
 # CLI utilities (optional)
 typer>=0.9.0
+
+# Web-based CLI dependencies
+fastapi>=0.100.0
+uvicorn>=0.20.0
+requests>=2.31.0
+
