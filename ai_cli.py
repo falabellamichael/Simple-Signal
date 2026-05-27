@@ -6,6 +6,7 @@ Provides a terminal-based AI assistant with beautiful output and interactive cha
 
 import json
 import os
+import random
 import sys
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -402,6 +403,251 @@ class SimpleSignalAI:
             return "Error processing conversation."
 
 
+from typing import Tuple
+
+def find_empty(board: List[List[int]]) -> Optional[Tuple[int, int]]:
+    """Find an empty cell in the Sudoku board."""
+    for r in range(9):
+        for c in range(9):
+            if board[r][c] == 0:
+                return r, c
+    return None
+
+def is_valid(board: List[List[int]], row: int, col: int, num: int) -> bool:
+    """Check if placing num at board[row][col] is valid."""
+    # Check row and column
+    for i in range(9):
+        if board[row][i] == num or board[i][col] == num:
+            return False
+
+    # Check 3x3 box
+    start_row = (row // 3) * 3
+    start_col = (col // 3) * 3
+    for i in range(3):
+        for j in range(3):
+            if board[start_row + i][start_col + j] == num:
+                return False
+
+    return True
+
+def solve_sudoku(board: List[List[int]]) -> bool:
+    """Solve the Sudoku board using backtracking."""
+    empty = find_empty(board)
+    if not empty:
+        return True
+    row, col = empty
+    
+    nums = list(range(1, 10))
+    random.shuffle(nums)
+    for num in nums:
+        if is_valid(board, row, col, num):
+            board[row][col] = num
+            if solve_sudoku(board):
+                return True
+            board[row][col] = 0
+    return False
+
+def generate_sudoku(size: int = 9) -> Tuple[List[List[int]], List[List[int]]]:
+    """Generate a valid Sudoku puzzle and its solution."""
+    if size != 9:
+        raise ValueError("Only 9x9 supported.")
+
+    board = [[0] * size for _ in range(size)]
+
+    # Fill diagonal boxes first (independent of each other)
+    def fill_box(r, c):
+        nums = list(range(1, 10))
+        random.shuffle(nums)
+        for i in range(3):
+            for j in range(3):
+                board[r + i][c + j] = nums[i * 3 + j]
+
+    fill_box(0, 0)
+    fill_box(3, 3)
+    fill_box(6, 6)
+
+    # Solve the rest of the board
+    solve_sudoku(board)
+    
+    # Save the solution
+    solution = [row[:] for row in board]
+
+    # Remove digits to create puzzle (remove ~50% of digits)
+    cells_to_remove = random.sample(range(size**2), int(size**2 * 0.50))
+    for idx in cells_to_remove:
+        r, c = divmod(idx, size)
+        board[r][c] = 0
+
+    return board, solution
+
+def is_solution_valid(board: List[List[int]]) -> bool:
+    """Check if the completed board is a valid solution."""
+    # Check rows
+    for row in board:
+        if sorted(row) != list(range(1, 10)):
+            return False
+            
+    # Check columns
+    for col_idx in range(9):
+        col = [board[row_idx][col_idx] for row_idx in range(9)]
+        if sorted(col) != list(range(1, 10)):
+            return False
+            
+    # Check 3x3 boxes
+    for r in range(0, 9, 3):
+        for c in range(0, 9, 3):
+            box = []
+            for i in range(3):
+                for j in range(3):
+                    box.append(board[r + i][c + j])
+            if sorted(box) != list(range(1, 10)):
+                return False
+                
+    return True
+
+def play_sudoku_curses(stdscr, puzzle: List[List[int]], solution: List[List[int]]):
+    """Play Sudoku in curses mode."""
+    import curses
+    
+    curses.curs_set(0)
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK) # original numbers
+    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK) # user numbers
+    curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLUE) # cursor selection
+    curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK) # success
+    curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK) # error
+    
+    current_board = [row[:] for row in puzzle]
+    is_original = [[puzzle[r][c] != 0 for c in range(9)] for r in range(9)]
+    
+    row, col = 0, 0
+    
+    while True:
+        stdscr.clear()
+        stdscr.addstr(1, 2, "🎮 SUDOKU GAME CLI", curses.color_pair(1) | curses.A_BOLD)
+        stdscr.addstr(2, 2, "Use arrow keys to move, 1-9 to fill, Backspace/0 to clear, 'q' to quit.")
+        stdscr.addstr(3, 2, "Press 's' to submit and check solution.")
+        
+        # Draw background grid
+        stdscr.addstr(4, 2, "╔═══╤═══╤═══╦═══╤═══╤═══╦═══╤═══╤═══╗")
+        for r in range(9):
+            stdscr.addstr(5 + r*2, 2, "║   │   │   ║   │   │   ║   │   │   ║")
+            if r < 8:
+                if (r + 1) % 3 == 0:
+                    stdscr.addstr(6 + r*2, 2, "╠═══╪═══╪═══╬═══╪═══╪═══╬═══╪═══╪═══╣")
+                else:
+                    stdscr.addstr(6 + r*2, 2, "╟───┼───┼───╫───┼───┼───╫───┼───┼───╢")
+        stdscr.addstr(22, 2, "╚═══╧═══╧═══╩═══╧═══╧═══╩═══╧═══╧═══╝")
+        
+        # Draw values
+        for r in range(9):
+            for c in range(9):
+                val = current_board[r][c]
+                val_str = str(val) if val != 0 else "."
+                
+                if r == row and c == col:
+                    attr = curses.color_pair(3) | curses.A_BOLD
+                else:
+                    attr = curses.color_pair(1) if is_original[r][c] else curses.color_pair(2)
+                    
+                stdscr.addstr(5 + r*2, 4 + c*4, val_str, attr)
+                
+        stdscr.refresh()
+        key = stdscr.getch()
+        
+        if key == ord('q'):
+            break
+        elif key == curses.KEY_UP and row > 0:
+            row -= 1
+        elif key == curses.KEY_DOWN and row < 8:
+            row += 1
+        elif key == curses.KEY_LEFT and col > 0:
+            col -= 1
+        elif key == curses.KEY_RIGHT and col < 8:
+            col += 1
+        elif ord('1') <= key <= ord('9'):
+            if not is_original[row][col]:
+                current_board[row][col] = int(chr(key))
+        elif key in [ord('0'), curses.KEY_BACKSPACE, 127, 8]:
+            if not is_original[row][col]:
+                current_board[row][col] = 0
+        elif key == ord('s'):
+            if is_solution_valid(current_board):
+                stdscr.addstr(24, 2, "🎉 CONGRATULATIONS! You solved the Sudoku correctly!", curses.color_pair(4) | curses.A_BOLD)
+                stdscr.addstr(25, 2, "Press any key to exit.")
+                stdscr.refresh()
+                stdscr.getch()
+                break
+            else:
+                stdscr.addstr(24, 2, "❌ Not quite correct yet! Keep trying.", curses.color_pair(5) | curses.A_BOLD)
+                stdscr.addstr(25, 2, "Press any key to continue.")
+                stdscr.refresh()
+                stdscr.getch()
+
+def play_sudoku_text(puzzle: List[List[int]], solution: List[List[int]]):
+    """Play Sudoku in text mode."""
+    current_board = [row[:] for row in puzzle]
+    is_original = [[puzzle[r][c] != 0 for c in range(9)] for r in range(9)]
+    
+    def print_board():
+        print("\n  ╔═══╤═══╤═══╦═══╤═══╤═══╦═══╤═══╤═══╗")
+        for r in range(9):
+            if r > 0:
+                if r % 3 == 0:
+                    print("  ╠═══╪═══╪═══╬═══╪═══╪═══╬═══╪═══╪═══╣")
+                else:
+                    print("  ╟───┼───┼───╫───┼───┼───╫───┼───┼───╢")
+            row_chars = []
+            for c in range(9):
+                val = current_board[r][c]
+                val_str = str(val) if val != 0 else "."
+                if is_original[r][c]:
+                    row_chars.append(f"\033[94m{val_str}\033[0m")
+                elif val != 0:
+                    row_chars.append(f"\033[92m{val_str}\033[0m")
+                else:
+                    row_chars.append(val_str)
+            print(f"  ║ {row_chars[0]} │ {row_chars[1]} │ {row_chars[2]} ║ {row_chars[3]} │ {row_chars[4]} │ {row_chars[5]} ║ {row_chars[6]} │ {row_chars[7]} │ {row_chars[8]} ║")
+        print("  ╚═══╧═══╧═══╩═══╧═══╧═══╩═══╧═══╧═══╝")
+
+    while True:
+        print_board()
+        print("\nCommands:")
+        print("  - Fill cell: 'r c v' (row column value, e.g. '1 1 5' for row 1, col 1, value 5)")
+        print("  - Clear cell: 'r c 0' (e.g. '1 1 0')")
+        print("  - 'submit' to check solution")
+        print("  - 'quit' to exit game")
+        
+        try:
+            cmd = input("\nEnter command: ").strip().lower()
+            if cmd == 'quit':
+                break
+            elif cmd == 'submit':
+                if is_solution_valid(current_board):
+                    print("\n🎉 CONGRATULATIONS! You solved the Sudoku correctly!\n")
+                    break
+                else:
+                    print("\n❌ Not quite correct yet! Keep trying.\n")
+            else:
+                parts = cmd.split()
+                if len(parts) == 3:
+                    r, c, v = int(parts[0]) - 1, int(parts[1]) - 1, int(parts[2])
+                    if 0 <= r < 9 and 0 <= c < 9 and 0 <= v <= 9:
+                        if is_original[r][c]:
+                            print("\n⚠️ Cannot modify original puzzle cell!\n")
+                        else:
+                            current_board[r][c] = v
+                    else:
+                        print("\n⚠️ Invalid values! Row/Col should be 1-9, Value 0-9.\n")
+                else:
+                    print("\n⚠️ Invalid command format! Use 'row col value' (e.g. '1 2 5') or 'submit' or 'quit'.\n")
+        except KeyboardInterrupt:
+            print("\nGame exited.")
+            break
+        except Exception:
+            print("\n⚠️ Error parsing command. Try again.\n")
+
+
 class CLIInterface:
     """Command-line interface with styling"""
     
@@ -651,6 +897,21 @@ class CLIInterface:
                         self._select_theme_interactive()
                     continue
                 
+                # Handle Sudoku game
+                if user_input.lower() == '/sudoku':
+                    print("\n🎲 Generating Sudoku puzzle...")
+                    try:
+                        puzzle, solution = generate_sudoku()
+                        try:
+                            import curses
+                            curses.wrapper(play_sudoku_curses, puzzle, solution)
+                        except Exception:
+                            print("\n⚠️ Curses mode failed/not supported. Starting text-only mode...")
+                            play_sudoku_text(puzzle, solution)
+                    except Exception as e:
+                        print(f"\n❌ Error starting game: {e}")
+                    continue
+                
                 if user_input.lower() in ['quit', 'exit', 'q']:
                     self.print_footer()
                     break
@@ -699,6 +960,21 @@ class CLIInterface:
                             print(f"\n{self.theme['error']} Theme '{requested}' not found. Available: {', '.join(self.THEMES.keys())}\n")
                     else:
                         self._select_theme_interactive()
+                    continue
+                
+                # Handle Sudoku game
+                if user_input.lower() == '/sudoku':
+                    print("\n🎲 Generating Sudoku puzzle...")
+                    try:
+                        puzzle, solution = generate_sudoku()
+                        try:
+                            import curses
+                            curses.wrapper(play_sudoku_curses, puzzle, solution)
+                        except Exception:
+                            print("\n⚠️ Curses mode failed/not supported. Starting text-only mode...")
+                            play_sudoku_text(puzzle, solution)
+                    except Exception as e:
+                        print(f"\n❌ Error starting game: {e}")
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
