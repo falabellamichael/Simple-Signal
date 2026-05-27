@@ -1,0 +1,17 @@
+{
+  "model": {
+    "path": null,
+    "max_length": 2048,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "repetition_penalty": 1.0
+  },
+  "chat": {
+    "system_prompt": "You are Simple Signal AI, a helpful local assistant that can answer questions, help with tasks, and engage in conversation.",
+    "max_tokens": 512
+  },
+  "output": {
+    "theme": "dark",
+    "verbose": true
+  }
+}
