@@ -140,7 +140,8 @@ body {
     background-color: var(--bg-color);
     color: var(--text-color);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    height: 100vh;
+    height: 100dvh; /* Dynamic Viewport Height for mobile/responsive layout */
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -153,7 +154,7 @@ body {
 .terminal-container {
     width: 100%;
     max-width: 900px;
-    height: 85vh;
+    height: 85dvh; /* Dynamic Viewport Height */
     background-color: var(--terminal-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -162,7 +163,17 @@ body {
     flex-direction: column;
     overflow: hidden;
     position: relative;
-    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, width 0.3s ease, height 0.3s ease, max-width 0.3s ease, border-radius 0.3s ease;
+}
+
+/* FULLSCREEN STYLING (MAXIMIZE) */
+.terminal-container.fullscreen {
+    max-width: 100vw;
+    width: 100vw;
+    height: 100dvh; /* Dynamic Viewport Height fullscreen */
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
 }
 
 /* HEADER WITH WINDOW CONTROLS AND ACTIONS */
@@ -189,7 +200,21 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 50%;
+    border: none;
+    outline: none;
+    cursor: pointer;
     display: inline-block;
+    padding: 0;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.control-dot:hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+.control-dot:active {
+    transform: scale(0.9);
 }
 
 .control-dot.close { background-color: #ff5f56; }
@@ -477,3 +502,169 @@ body {
     margin: 10px 0;
     opacity: 0.5;
 }
+
+/* TERMINAL LAYOUT WRAPPER */
+.terminal-layout-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+    width: 100%;
+}
+
+.terminal-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* COLLAPSIBLE SIDEBAR FOR SAVED CHATS */
+.terminal-sidebar {
+    width: 240px;
+    background-color: var(--header-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s ease, border-color 0.3s ease;
+    font-family: 'Fira Code', Consolas, Monaco, monospace;
+}
+
+.terminal-sidebar.collapsed {
+    width: 0;
+    border-right: none;
+}
+
+.sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--accent-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    white-space: nowrap;
+}
+
+#close-sidebar-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+    transition: color 0.2s ease;
+}
+
+#close-sidebar-btn:hover {
+    color: var(--accent-color);
+}
+
+.sessions-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Custom Scrollbar for Sidebar */
+.sessions-list::-webkit-scrollbar {
+    width: 4px;
+}
+.sessions-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sessions-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+/* Session Entry */
+.session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    color: var(--text-muted);
+    text-decoration: none;
+    user-select: none;
+    border: 1px solid transparent;
+}
+
+.session-item:hover {
+    background-color: var(--terminal-bg);
+    color: var(--text-color);
+}
+
+.session-item.active {
+    background-color: var(--terminal-bg);
+    color: var(--accent-color);
+    border-color: var(--border-color);
+}
+
+.session-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
+.delete-session-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.session-item:hover .delete-session-btn {
+    opacity: 1;
+}
+
+.delete-session-btn:hover {
+    color: #ff5f56;
+    background-color: var(--input-focus-bg);
+}
+
+.empty-history {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+}
+
+/* HEADER ACTION BUTTONS */
+.header-action-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.header-action-btn:hover {
+    border-color: var(--accent-color);
+    background-color: var(--input-focus-bg);
+}
+
