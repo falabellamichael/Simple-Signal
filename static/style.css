@@ -668,3 +668,27 @@ body {
     background-color: var(--input-focus-bg);
 }
 
+/* Paragraph blocks inside message content */
+.msg-block {
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.msg-block:last-child {
+    margin-bottom: 0;
+}
+
+/* Real-time streaming generation stats */
+.generation-stats {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 4px;
+    display: flex;
+    gap: 15px;
+    animation: fadeIn 0.2s ease-out;
+    user-select: none;
+}
+

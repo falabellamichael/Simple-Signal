@@ -186,6 +186,11 @@ function renderLaTeX(element) {
     }
 }
 
+// Check if string contains LaTeX delimiters
+function hasLaTeX(text) {
+    return text.includes('$') || text.includes('\\(') || text.includes('\\[') || text.includes('\\begin{');
+}
+
 // Parse markdown bold and inline links in text
 function parseMarkdown(text) {
     // Escape HTML to prevent injection
@@ -196,7 +201,7 @@ function parseMarkdown(text) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
         
-    // Restore LaTeX backslash-parentheses delimiters from escaping so KaTeX matches them
+    // Restore LaTeX backslash-parentheses delimiters from escaping so MathJax matches them
     escaped = escaped.replace(/\\&lt;/g, '\\<').replace(/\\&gt;/g, '\\>');
     
     // Parse bold text: **text**
@@ -209,6 +214,61 @@ function parseMarkdown(text) {
     escaped = escaped.replace(/---/g, '<div class="search-divider"></div>');
     
     return escaped;
+}
+
+// Format paragraph-separated message body
+function formatMessageBody(text) {
+    return text.split('\n\n').map(blockText => {
+        if (!blockText.trim()) return '';
+        return `<p class="msg-block">${parseMarkdown(blockText)}</p>`;
+    }).filter(Boolean).join('');
+}
+
+// Optimized block-level update helper that scales linearly (O(1) updates)
+function updateMessageContent(container, text, isFinal = false, shouldTypeset = true) {
+    const rawBlocks = text.split('\n\n');
+    let childNodes = container.querySelectorAll('.msg-block');
+    
+    // Adjust number of child nodes to match rawBlocks length
+    while (childNodes.length < rawBlocks.length) {
+        const newBlock = document.createElement('p');
+        newBlock.className = 'msg-block active';
+        container.appendChild(newBlock);
+        childNodes = container.querySelectorAll('.msg-block');
+    }
+    
+    // Update each block's content
+    for (let i = 0; i < rawBlocks.length; i++) {
+        const blockText = rawBlocks[i];
+        const blockNode = childNodes[i];
+        const isLast = (i === rawBlocks.length - 1);
+        
+        // If it's not the last block and it's marked active, it means it just completed
+        if (!isLast && blockNode.classList.contains('active')) {
+            blockNode.classList.remove('active');
+            blockNode.innerHTML = parseMarkdown(blockText);
+            if (hasLaTeX(blockText)) {
+                renderLaTeX(blockNode);
+            }
+        } else if (isLast) {
+            const parsedContent = parseMarkdown(blockText);
+            const cursorHtml = isFinal ? '' : '<span class="cursor-block"></span>';
+            const targetHtml = `${parsedContent}${cursorHtml}`;
+            
+            if (blockNode.innerHTML !== targetHtml) {
+                blockNode.innerHTML = targetHtml;
+                
+                if (isFinal) {
+                    blockNode.classList.remove('active');
+                    if (hasLaTeX(blockText)) {
+                        renderLaTeX(blockNode);
+                    }
+                } else if (shouldTypeset && hasLaTeX(blockText)) {
+                    renderLaTeX(blockNode);
+                }
+            }
+        }
+    }
 }
 
 // Append system information output directly in terminal
@@ -250,7 +310,7 @@ async function submitMessage() {
     // 3. Create Placeholder AI Output block
     const aiEntry = createMessageBlock('ai');
     const contentText = aiEntry.querySelector('.message-content-text');
-    const cursor = aiEntry.querySelector('.cursor-block');
+    const statsEl = aiEntry.querySelector('.generation-stats');
     
     // Toggle action button to streaming status
     isStreaming = true;
@@ -259,6 +319,8 @@ async function submitMessage() {
     
     currentAbortController = new AbortController();
     let assistantResponse = '';
+    let chunkCount = 0;
+    let streamStartTime = null;
     
     try {
         const response = await fetch('/api/chat', {
@@ -275,24 +337,55 @@ async function submitMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
         
+        let lastTypesetTime = 0;
+        const TYPESET_THROTTLE_MS = 200; // Render at most once every 200ms during streaming
+        
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
             
             const chunk = decoder.decode(value, { stream: true });
+            
+            if (!streamStartTime && chunk.trim()) {
+                streamStartTime = Date.now();
+            }
+            if (chunk.trim()) {
+                chunkCount++;
+            }
+            
             assistantResponse += chunk;
             
-            // Set HTML content to parse Markdown while preserving LaTeX tokens
-            contentText.innerHTML = parseMarkdown(assistantResponse);
-            renderLaTeX(contentText); // Render LaTeX live as chunks arrive!
+            // Throttle MathJax rendering to keep streaming fast and smooth
+            const now = Date.now();
+            const shouldTypeset = (now - lastTypesetTime > TYPESET_THROTTLE_MS);
+            
+            updateMessageContent(contentText, assistantResponse, false, shouldTypeset);
+            
+            if (shouldTypeset) {
+                lastTypesetTime = now;
+            }
+            
+            // Show stats in real-time
+            if (streamStartTime) {
+                const elapsed = (Date.now() - streamStartTime) / 1000;
+                const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+                statsEl.style.display = 'flex';
+                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount}</span>`;
+            }
+            
             scrollToBottom();
         }
         
-        // Remove active cursor
-        cursor.remove();
+        // Final update to clear active class and cursor
+        updateMessageContent(contentText, assistantResponse, true);
         
-        // Final LaTeX render triggers on the completed message
-        renderLaTeX(contentText);
+        // Update stats with final metrics
+        if (streamStartTime) {
+            const elapsed = (Date.now() - streamStartTime) / 1000;
+            const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+            statsEl.style.display = 'flex';
+            statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount}</span>`;
+        }
         
         // Store full assistant reply
         conversationHistory.push({ role: 'assistant', content: assistantResponse });
@@ -304,8 +397,14 @@ async function submitMessage() {
         if (e.name === 'AbortError') {
             // User aborted the request
             assistantResponse += ' [Interrupted by user]';
-            contentText.innerHTML = parseMarkdown(assistantResponse);
-            cursor.remove();
+            updateMessageContent(contentText, assistantResponse, true);
+            
+            if (streamStartTime) {
+                const elapsed = (Date.now() - streamStartTime) / 1000;
+                const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+                statsEl.style.display = 'flex';
+                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount} (Interrupted)</span>`;
+            }
             
             // Store partial answer
             conversationHistory.push({ role: 'assistant', content: assistantResponse });
@@ -314,8 +413,10 @@ async function submitMessage() {
         } else {
             // Real network/server error
             console.error('Fetch error:', e);
-            contentText.innerHTML = `<span style="color:#ff5f56;">❌ Connection Error: Failed to generate response (${e.message})</span>`;
-            cursor.remove();
+            const errorBlock = document.createElement('p');
+            errorBlock.className = 'msg-block';
+            errorBlock.innerHTML = `<span style="color:#ff5f56;">❌ Connection Error: Failed to generate response (${e.message})</span>`;
+            contentText.appendChild(errorBlock);
         }
     } finally {
         isStreaming = false;
@@ -337,9 +438,11 @@ function appendMessage(role, text) {
     const headerClass = isUser ? 'user' : 'ai';
     const prefix = isUser ? '👤 ' : '🤖 ';
     
+    const contentHtml = isUser ? parseMarkdown(text) : formatMessageBody(text);
+    
     entry.innerHTML = `
         <div class="message-header ${headerClass}">${prefix}${headerText}</div>
-        <div class="message-content">${parseMarkdown(text)}</div>
+        <div class="message-content">${contentHtml}</div>
     `;
     
     terminalScreen.appendChild(entry);
@@ -357,8 +460,9 @@ function createMessageBlock(role) {
     entry.innerHTML = `
         <div class="message-header ${headerClass}">${prefix}${headerText}</div>
         <div class="message-content">
-            <span class="message-content-text"></span><span class="cursor-block"></span>
+            <div class="message-content-text"></div>
         </div>
+        <div class="generation-stats" style="display: none;"></div>
     `;
     
     terminalScreen.appendChild(entry);
