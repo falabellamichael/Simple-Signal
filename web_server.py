@@ -8,6 +8,7 @@ import os
 import json
 import asyncio
 import threading
+import time
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
@@ -53,7 +54,7 @@ class ConfigUpdate(BaseModel):
 class ModelSelect(BaseModel):
     model: str
 
-async def get_gpu_info_data():
+def get_gpu_info_data_sync():
     """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
     gpu_list = []
     
@@ -138,12 +139,12 @@ async def get_gpu_info_data():
         
     return gpu_list
 
-async def stream_gpu_table():
+def stream_gpu_table():
     """Format and stream GPU detection as an aligned ASCII text table"""
     yield "🔌 Querying system for graphics hardware details...\n\n"
-    await asyncio.sleep(0.3)
+    time.sleep(0.3)
     
-    gpus = await get_gpu_info_data()
+    gpus = get_gpu_info_data_sync()
     
     # Column configuration widths (total characters to fit inside 80cols cleanly)
     col_widths = {
@@ -160,7 +161,7 @@ async def stream_gpu_table():
     yield separator
     yield header
     yield separator
-    await asyncio.sleep(0.1)
+    time.sleep(0.1)
     
     for gpu in gpus:
         name = gpu["name"]
@@ -182,23 +183,23 @@ async def stream_gpu_table():
         row = f"| {name.ljust(col_widths['name'])} | {backend.ljust(col_widths['backend'])} | {dev_id.ljust(col_widths['id'])} | {status.ljust(col_widths['status'])} |\n"
         yield row
         yield separator
-        await asyncio.sleep(0.04)
+        time.sleep(0.04)
 
-async def stream_search_results(query: str):
+def stream_search_results(query: str):
     """Perform a web search via DuckDuckGo and stream findings chunk-by-chunk"""
     yield "🔍 Searching the web for: " + query + "...\n\n"
-    await asyncio.sleep(0.3)
+    time.sleep(0.3)
     try:
         from web_search import search_ddg
-        loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, search_ddg, query)
+        # Note: We don't need loop.run_in_executor here because this generator runs in a thread pool already!
+        results = search_ddg(query)
         
         if not results:
             yield "❌ No search results found or web request failed."
             return
             
         yield f"✅ Found {len(results)} web results:\n\n"
-        await asyncio.sleep(0.2)
+        time.sleep(0.2)
         
         for idx, r in enumerate(results, 1):
             title = r["title"]
@@ -214,135 +215,105 @@ async def stream_search_results(query: str):
             # Stream out the block in typewriter effect
             for char in result_block:
                 yield char
-                await asyncio.sleep(0.002)
+                time.sleep(0.002)
     except Exception as e:
         yield f"❌ Error during web search: {str(e)}"
 
-async def generate_chat_stream(messages: List[Dict[str, str]]):
+def generate_chat_stream(messages: List[Dict[str, str]]):
     """Stream response in real-time depending on active backend mode"""
-    loop = asyncio.get_running_loop()
-    
     # 1. API Mode (e.g. LM Studio running)
     if ai.is_api:
-        queue = asyncio.Queue()
-        
-        def make_request():
-            try:
-                import requests
-                url = ai.api_url
-                if not url.endswith("/chat/completions"):
-                    url = f"{url}/chat/completions"
-                    
-                headers = {"Content-Type": "application/json"}
-                api_token = os.environ.get("LM_API_TOKEN") or os.environ.get("SIGNAL_SHARE_LM_STUDIO_API_TOKEN")
-                if api_token:
-                    headers["Authorization"] = f"Bearer {api_token}"
-                    
-                payload = {
-                    "messages": messages,
-                    "temperature": ai.config["model"].get("temperature", 0.7),
-                    "max_tokens": ai.config["chat"]["max_tokens"],
-                    "top_p": ai.config["model"].get("top_p", 0.9),
-                    "stream": True
-                }
-                if ai.selected_model:
-                    payload["model"] = ai.selected_model
-                    
-                response = requests.post(url, json=payload, headers=headers, stream=True, timeout=30.0)
+        import requests
+        url = ai.api_url
+        if not url.endswith("/chat/completions"):
+            url = f"{url}/chat/completions"
+            
+        headers = {"Content-Type": "application/json"}
+        api_token = os.environ.get("LM_API_TOKEN") or os.environ.get("SIGNAL_SHARE_LM_STUDIO_API_TOKEN")
+        if api_token:
+            headers["Authorization"] = f"Bearer {api_token}"
+            
+        payload = {
+            "messages": messages,
+            "temperature": ai.config["model"].get("temperature", 0.7),
+            "max_tokens": ai.config["chat"]["max_tokens"],
+            "top_p": ai.config["model"].get("top_p", 0.9),
+            "stream": True
+        }
+        if ai.selected_model:
+            payload["model"] = ai.selected_model
+            
+        try:
+            response = requests.post(url, json=payload, headers=headers, stream=True, timeout=30.0)
+            if response.status_code != 200:
+                yield f"❌ API Error: Received status code {response.status_code}\n{response.text}"
+                return
                 
-                if response.status_code != 200:
-                    loop.call_soon_threadsafe(queue.put_nowait, f"❌ API Error: Received status code {response.status_code}")
-                    loop.call_soon_threadsafe(queue.put_nowait, None)
-                    return
-                    
-                for line in response.iter_lines():
-                    if line:
-                        decoded_line = line.decode('utf-8')
-                        if decoded_line.startswith("data: "):
-                            data_str = decoded_line[6:]
-                            if data_str.strip() == "[DONE]":
-                                break
-                            try:
-                                data_json = json.loads(data_str)
-                                content = data_json["choices"][0]["delta"].get("content", "")
-                                if content:
-                                    loop.call_soon_threadsafe(queue.put_nowait, content)
-                            except Exception:
-                                pass
-            except Exception as e:
-                loop.call_soon_threadsafe(queue.put_nowait, f"❌ API Connection Error: {str(e)}")
-            finally:
-                loop.call_soon_threadsafe(queue.put_nowait, None)
-                
-        thread = threading.Thread(target=make_request, daemon=True)
-        thread.start()
-        
-        while True:
-            chunk = await queue.get()
-            if chunk is None:
-                break
-            yield chunk
+            for line in response.iter_lines():
+                if line:
+                    decoded_line = line.decode('utf-8')
+                    if decoded_line.startswith("data: "):
+                        data_str = decoded_line[6:]
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            data_json = json.loads(data_str)
+                            content = data_json["choices"][0]["delta"].get("content", "")
+                            if content:
+                                yield content
+                        except Exception:
+                            pass
+        except Exception as e:
+            yield f"❌ API Connection Error: {str(e)}"
 
     # 2. Local Transformers Mode
     elif HAS_TRANSFORMERS and ai.model is not None and ai.tokenizer is not None:
-        queue = asyncio.Queue()
-        
-        def run_generation():
+        try:
+            from transformers import TextIteratorStreamer
+            from threading import Thread
+            
+            # Apply chat template
             try:
-                from transformers import TextIteratorStreamer
-                from threading import Thread
+                chat_messages = []
+                has_system = any(msg.get("role") == "system" for msg in messages)
+                if not has_system:
+                    chat_messages.append({"role": "system", "content": ai.config["chat"]["system_prompt"]})
+                chat_messages.extend(messages)
+                full_prompt = ai.tokenizer.apply_chat_template(chat_messages, tokenize=False, add_generation_prompt=True)
+            except Exception:
+                prompt_parts = []
+                for msg in messages:
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    prefix = {"system": "SYS ", "user": "USR ", "assistant": "ASSISTANT "}.get(role, "USR ")
+                    prompt_parts.append(f"{prefix}{content}")
+                full_prompt = "\n\n".join(prompt_parts) + "\n\nASSISTANT: "
                 
-                # Apply chat template
-                try:
-                    chat_messages = []
-                    has_system = any(msg.get("role") == "system" for msg in messages)
-                    if not has_system:
-                        chat_messages.append({"role": "system", "content": ai.config["chat"]["system_prompt"]})
-                    chat_messages.extend(messages)
-                    full_prompt = ai.tokenizer.apply_chat_template(chat_messages, tokenize=False, add_generation_prompt=True)
-                except Exception:
-                    prompt_parts = []
-                    for msg in messages:
-                        role = msg.get("role", "user")
-                        content = msg.get("content", "")
-                        prefix = {"system": "SYS ", "user": "USR ", "assistant": "ASSISTANT "}.get(role, "USR ")
-                        prompt_parts.append(f"{prefix}{content}")
-                    full_prompt = "\n\n".join(prompt_parts) + "\n\nASSISTANT: "
-                    
-                inputs = ai.tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=ai.config["model"]["max_length"])
+            inputs = ai.tokenizer(full_prompt, return_tensors="pt", truncation=True, max_length=ai.config["model"]["max_length"])
+            
+            if str(ai.device) != "cpu" and ai.device is not None:
+                inputs = {k: v.to(ai.device) for k, v in inputs.items()}
                 
-                if str(ai.device) != "cpu" and ai.device is not None:
-                    inputs = {k: v.to(ai.device) for k, v in inputs.items()}
-                    
-                streamer = TextIteratorStreamer(ai.tokenizer, skip_prompt=True, skip_special_tokens=True)
-                
-                generation_kwargs = dict(
-                    **inputs,
-                    streamer=streamer,
-                    max_new_tokens=ai.config["chat"]["max_tokens"],
-                    do_sample=ai.config["model"].get("temperature", 0.7) > 0.0,
-                    temperature=ai.config["model"].get("temperature", 0.7),
-                    top_p=ai.config["model"].get("top_p", 0.9)
-                )
-                
-                t = Thread(target=ai.model.generate, kwargs=generation_kwargs)
-                t.start()
-                
-                for chunk in streamer:
-                    loop.call_soon_threadsafe(queue.put_nowait, chunk)
-            except Exception as e:
-                loop.call_soon_threadsafe(queue.put_nowait, f"❌ Generation error: {str(e)}")
-            finally:
-                loop.call_soon_threadsafe(queue.put_nowait, None)
-                
-        thread = threading.Thread(target=run_generation, daemon=True)
-        thread.start()
-        
-        while True:
-            chunk = await queue.get()
-            if chunk is None:
-                break
-            yield chunk
+            streamer = TextIteratorStreamer(ai.tokenizer, skip_prompt=True, skip_special_tokens=True)
+            
+            generation_kwargs = dict(
+                **inputs,
+                streamer=streamer,
+                max_new_tokens=ai.config["chat"]["max_tokens"],
+                do_sample=ai.config["model"].get("temperature", 0.7) > 0.0,
+                temperature=ai.config["model"].get("temperature", 0.7),
+                top_p=ai.config["model"].get("top_p", 0.9)
+            )
+            
+            # Run in a side thread to let TextIteratorStreamer work
+            t = Thread(target=ai.model.generate, kwargs=generation_kwargs)
+            t.start()
+            
+            # Yield from streamer directly (synchronous iterator)
+            for chunk in streamer:
+                yield chunk
+        except Exception as e:
+            yield f"❌ Generation error: {str(e)}"
 
     # 3. Demo Mode (simulated streaming)
     else:
@@ -369,10 +340,10 @@ async def generate_chat_stream(messages: List[Dict[str, str]]):
         words = response.split(" ")
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")
-            await asyncio.sleep(0.04)
+            time.sleep(0.04)
 
 @app.post("/api/chat")
-async def chat_endpoint(payload: ChatPayload):
+def chat_endpoint(payload: ChatPayload):
     """Receive messages, parsing for custom commands or forwarding to AI generator"""
     messages = payload.messages
     if not messages:
@@ -402,7 +373,7 @@ async def chat_endpoint(payload: ChatPayload):
     )
 
 @app.get("/api/config")
-async def get_config():
+def get_config():
     """Retrieve settings and backend state"""
     return {
         "theme": ai.config.get("output", {}).get("theme", "dark"),
@@ -413,7 +384,7 @@ async def get_config():
     }
 
 @app.post("/api/config")
-async def update_config(data: ConfigUpdate):
+def update_config(data: ConfigUpdate):
     """Persist settings to configuration file"""
     if data.theme:
         ai.config["output"]["theme"] = data.theme
@@ -423,7 +394,7 @@ async def update_config(data: ConfigUpdate):
     return {"status": "success", "config": ai.config}
 
 @app.get("/api/models")
-async def get_models():
+def get_models():
     """Find models in local LM Studio"""
     lm_url = ai._check_lm_studio()
     if lm_url:
@@ -452,13 +423,13 @@ async def get_models():
     return {"connected": False, "models": [], "info": "LM Studio API not detected running locally."}
 
 @app.get("/api/system/gpu")
-async def get_gpu_info():
+def get_gpu_info():
     """Endpoint exposing the raw GPU hardware list as JSON"""
-    gpus = await get_gpu_info_data()
+    gpus = get_gpu_info_data_sync()
     return {"gpus": gpus}
 
 @app.post("/api/model")
-async def select_model(data: ModelSelect):
+def select_model(data: ModelSelect):
     """Switch models or force API mode"""
     ai.selected_model = data.model
     if not ai.is_api:
@@ -473,7 +444,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Root endpoint serves index.html
 @app.get("/")
-async def get_index():
+def get_index():
     return FileResponse("static/index.html")
 
 if __name__ == "__main__":

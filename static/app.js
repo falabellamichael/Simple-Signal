@@ -292,6 +292,7 @@ async function submitMessage() {
             
             // Set HTML content to parse Markdown while preserving LaTeX tokens
             contentText.innerHTML = parseMarkdown(assistantResponse);
+            renderLaTeX(contentText); // Render LaTeX live as chunks arrive!
             scrollToBottom();
         }
         
