@@ -23,6 +23,7 @@ simple-signal-cli/
 ├── INSTALL.md             # Installation instructions
 ├── CHANGELOG.md           # Version history
 ├── demo.py                # Demo script
+├── web_search.py          # Standalone web search utility (10KB)
 ├── test_install.py        # Installation test
 ├── .env.example           # Environment variables template
 ├── .gitignore             # Git ignore rules
@@ -56,6 +57,7 @@ run.bat
 - 🎨 **Beautiful Themes**: dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula (saved persistently!)
 - 💬 **Interactive Chat**: Continuous conversation mode with `/theme` chooser commands
 - 📐 **LaTeX Math Rendering**: Converts standard LaTeX equations (e.g. `$x^2$`, `\sum`) into pretty Unicode formatting automatically!
+- 🌐 **Web Search Integration**: Search DuckDuckGo directly with `/search <query>` in the chat interface!
 - 🎮 **Sudoku Mini-game**: Run `/sudoku` inside the CLI to play a fully interactive game with curses & text fallback!
 - 🚀 **Local AI Inference**: Works with any Hugging Face model
 - ⚡ **Demo Mode**: Explore without installing a model
@@ -88,6 +90,9 @@ MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct" python ai_cli.py
 
 # Using PowerShell launcher
 .\run.ps1
+
+# Search DuckDuckGo from the terminal
+python web_search.py "python programming news"
 
 # Test installation
 python test_install.py
