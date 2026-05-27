@@ -53,8 +53,8 @@ run.bat
 
 ## Features
 
-- 🎨 **Beautiful Themes**: dark, light, cyberpunk
-- 💬 **Interactive Chat**: Continuous conversation mode
+- 🎨 **Beautiful Themes**: dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula (saved persistently!)
+- 💬 **Interactive Chat**: Continuous conversation mode with `/theme` chooser commands
 - 🚀 **Local AI Inference**: Works with any Hugging Face model
 - ⚡ **Demo Mode**: Explore without installing a model
 - 📦 **Easy Setup**: One-command installation
@@ -73,7 +73,7 @@ Any causal language model from Hugging Face:
 Edit `config.json` to customize:
 - Model temperature and max length
 - Chat system prompts
-- Output theme (dark/light/cyberpunk)
+- Output theme (any of the 8 available themes)
 
 ## Quick Commands
 

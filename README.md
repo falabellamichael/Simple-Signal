@@ -4,7 +4,7 @@ A stylish, terminal-based AI inference tool that provides a command prompt-style
 
 ## Features
 
-- 🎨 Beautiful terminal output with multiple themes (dark, light, cyberpunk)
+- 🎨 Beautiful terminal output with 8 rich themes (dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula) with full ANSI colors
 - 💬 Interactive chat mode for continuous conversation
 - 🚀 Local AI inference with support for various models
 - ⚡ Fast and efficient CLI interface
@@ -85,18 +85,35 @@ python ai_cli.py
 ```
 
 ## Available Commands
-
-- Type any message to chat with the AI
-- `quit`, `exit`, or `q` - Exit the application
-- `help` - Show available commands (demo mode)
-
-## Configuration
-
-Edit `config.json` to customize:
-
-- **Model settings**: temperature, max_length, top_p
-- **Chat settings**: system prompt, max tokens
-- **Output theme**: dark, light, cyberpunk
+ 
+ - Type any message to chat with the AI
+ - `/theme` - Open the interactive theme selector to switch themes
+ - `/theme <name>` - Directly switch to a specific theme (e.g., `/theme matrix`)
+ - `quit`, `exit`, or `q` - Exit the application
+ - `help` - Show available commands (demo mode)
+ 
+ ## Configuration
+ 
+ Edit `config.json` to customize:
+ 
+ - **Model settings**: temperature, max_length, top_p
+ - **Chat settings**: system prompt, max tokens
+ - **Output theme**: dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula (saved persistently when changed!)
+ 
+ ## Authentication (LM Studio Token)
+ 
+ If your local LM Studio server requires authentication:
+ 
+ 1. Copy `.env.example` to `.env`:
+    ```bash
+    cp .env.example .env
+    ```
+ 2. Set your token in the `.env` file:
+    ```
+    LM_API_TOKEN=your-token-here
+    ```
+ 
+ *Note: The CLI also automatically scans your workspace and detects tokens defined as `SIGNAL_SHARE_LM_STUDIO_API_TOKEN` in the parent projects for a seamless experience.*
 
 ## Supported Models
 

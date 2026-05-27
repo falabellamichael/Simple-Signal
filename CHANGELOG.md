@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0] - Theme Selector & Authentication Updates
+
+### New Features
+- 🎨 **Interactive Theme Chooser** - Change terminal appearance on-the-fly!
+  - Type `/theme` during chat to open a visual menu of all available styles.
+  - Support direct command switching using `/theme <name>`.
+  - Configurations are saved persistently back to `config.json` automatically.
+- 🌈 **5 New Premium Color Themes** - Matrix, Sunset, Ocean, Forest, and Dracula.
+  - Added support for rich ANSI foreground colors, distinct visual double/wave line separators, and custom theme emojis.
+- 🌐 **LM Studio Bearer Token Authentication** - Seamless integration with secure local servers.
+  - Support for `LM_API_TOKEN` and `SIGNAL_SHARE_LM_STUDIO_API_TOKEN` in `.env` config.
+  - Automatic loopback checking over both `localhost` and `127.0.0.1`.
+
 ## [1.1.0] - Model Selector Update
 
 ### New Features
