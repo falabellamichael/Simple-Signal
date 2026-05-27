@@ -1,0 +1,14 @@
+# Simple Signal CLI Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core AI/ML libraries
+transformers>=4.30.0
+torch>=2.0.0
+accelerate>=0.20.0
+
+# Optional but recommended
+sentencepiece>=0.1.99
+tokenizers>=0.13.3
+
+# CLI utilities
+typer>=0.9.0
