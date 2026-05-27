@@ -6,6 +6,7 @@ A stylish, terminal-based AI inference tool that provides a command prompt-style
 
 - 🎨 Beautiful terminal output with 8 rich themes (dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula) with full ANSI colors
 - 💬 Interactive chat mode for continuous conversation
+- 📐 **LaTeX Mathematical Formatting** - Automatically converts LaTeX equations into clean, readable Unicode math formatting in your terminal!
 - 🚀 Local AI inference with support for various models
 - ⚡ Fast and efficient CLI interface
 - 📦 Easy setup with requirements.txt

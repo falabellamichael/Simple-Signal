@@ -55,6 +55,7 @@ run.bat
  
 - 🎨 **Beautiful Themes**: dark, light, cyberpunk, matrix, sunset, ocean, forest, dracula (saved persistently!)
 - 💬 **Interactive Chat**: Continuous conversation mode with `/theme` chooser commands
+- 📐 **LaTeX Math Rendering**: Converts standard LaTeX equations (e.g. `$x^2$`, `\sum`) into pretty Unicode formatting automatically!
 - 🎮 **Sudoku Mini-game**: Run `/sudoku` inside the CLI to play a fully interactive game with curses & text fallback!
 - 🚀 **Local AI Inference**: Works with any Hugging Face model
 - ⚡ **Demo Mode**: Explore without installing a model
