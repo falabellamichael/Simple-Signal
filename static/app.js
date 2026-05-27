@@ -179,18 +179,10 @@ function stopStreaming() {
     }
 }
 
-// Formats LaTeX math block in elements
+// Formats LaTeX math block in elements using MathJax
 function renderLaTeX(element) {
-    if (typeof renderMathInElement === 'function') {
-        renderMathInElement(element, {
-            delimiters: [
-                {left: "$$", right: "$$", display: true},
-                {left: "$", right: "$", display: false},
-                {left: "\\(", right: "\\)", display: false},
-                {left: "\\[", right: "\\]", display: true}
-            ],
-            throwOnError: false
-        });
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([element]).catch(err => console.error('MathJax error:', err));
     }
 }
 
