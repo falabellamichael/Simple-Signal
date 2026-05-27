@@ -7,6 +7,7 @@ Provides a terminal-based AI assistant with beautiful output and interactive cha
 import json
 import os
 import random
+import re
 import sys
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -404,6 +405,79 @@ class SimpleSignalAI:
 
 
 from typing import Tuple
+
+def format_latex_math(text: str) -> str:
+    """Format LaTeX mathematical expressions in text into pretty Unicode representations."""
+    greek_letters = {
+        r'\alpha': 'α', r'\beta': 'β', r'\gamma': 'γ', r'\delta': 'δ', r'\epsilon': 'ε',
+        r'\zeta': 'ζ', r'\eta': 'η', r'\theta': 'θ', r'\iota': 'ι', r'\kappa': 'κ',
+        r'\lambda': 'λ', r'\mu': 'μ', r'\nu': 'ν', r'\xi': 'ξ', r'\pi': 'π',
+        r'\rho': 'ρ', r'\sigma': 'σ', r'\tau': 'τ', r'\upsilon': 'υ', r'\phi': 'φ',
+        r'\chi': 'χ', r'\psi': 'ψ', r'\omega': 'ω',
+        r'\Delta': 'Δ', r'\Sigma': 'Σ', r'\Omega': 'Ω', r'\Theta': 'Θ', r'\Pi': 'Π',
+        r'\Phi': 'Φ', r'\Psi': 'Ψ', r'\Gamma': 'Γ', r'\Lambda': 'Λ'
+    }
+    
+    math_symbols = {
+        r'\sum': '∑', r'\prod': '∏', r'\int': '∫', r'\sqrt': '√', r'\infty': '∞',
+        r'\approx': '≈', r'\neq': '≠', r'\le': '≤', r'\ge': '≥', r'\pm': '±',
+        r'\times': '×', r'\div': '÷', r'\cdot': '·', r'\partial': '∂', r'\nabla': '∇',
+        r'\in': '∈', r'\notin': '∉', r'\forall': '∀', r'\exists': '∃', r'\to': '→',
+        r'\left': '', r'\right': ''
+    }
+    
+    superscripts = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ', 'i': 'ⁱ',
+        'j': 'ʲ', 'r': 'ʳ', 't': 'ᵗ', 'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ',
+        'h': 'ʰ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'o': 'ᵒ', 'p': 'ᵖ', 's': 'ˢ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ'
+    }
+    
+    subscripts = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎', 'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ',
+        'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ',
+        'v': 'ᵥ', 'x': 'ₓ'
+    }
+    
+    def convert_script(val: str, mapping: dict) -> str:
+        return "".join(mapping.get(char, char) for char in val)
+
+    def process_math_block(match) -> str:
+        expr = match.group(1)
+        
+        # 1. Replace Greek letters and math symbols
+        for key, val in greek_letters.items():
+            expr = expr.replace(key, val)
+        for key, val in math_symbols.items():
+            expr = expr.replace(key, val)
+            
+        # 2. Replace superscripts: ^{content}
+        expr = re.sub(r'\^\{([^}]+)\}', lambda m: convert_script(m.group(1), superscripts), expr)
+        # Replace single character superscripts: ^c
+        expr = re.sub(r'\^(\w|\+|-|=)', lambda m: convert_script(m.group(1), superscripts), expr)
+        
+        # 3. Replace subscripts: _{content}
+        expr = re.sub(r'\_\{([^}]+)\}', lambda m: convert_script(m.group(1), subscripts), expr)
+        # Replace single character subscripts: _c
+        expr = re.sub(r'\_(\w|\+|-|=)', lambda m: convert_script(m.group(1), subscripts), expr)
+        
+        # 4. Clean up fractions
+        expr = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1/\2)', expr)
+        
+        return expr
+
+    # Process double dollar blocks first
+    text = re.sub(r'\$\$(.*?)\$\$', process_math_block, text, flags=re.DOTALL)
+    # Process single dollar blocks
+    text = re.sub(r'\$(.*?)\$', process_math_block, text)
+    # Process brackets and parentheses blocks
+    text = re.sub(r'\\\\\[(.*?)\\\\\]', process_math_block, text, flags=re.DOTALL)
+    text = re.sub(r'\\\[(.*?)\\\]', process_math_block, text, flags=re.DOTALL)
+    text = re.sub(r'\\\\\((.*?)\\\\\)', process_math_block, text, flags=re.DOTALL)
+    text = re.sub(r'\\\((.*?)\\\)', process_math_block, text, flags=re.DOTALL)
+    
+    return text
 
 def find_empty(board: List[List[int]]) -> Optional[Tuple[int, int]]:
     """Find an empty cell in the Sudoku board."""
@@ -852,15 +926,16 @@ class CLIInterface:
     def print_message(self, role: str, content: str):
         """Print a message with appropriate prefix and coloring"""
         reset = "\033[0m"
+        formatted_content = format_latex_math(content)
         if role == "user":
             prefix = self.theme["user_prefix"]
             color = self.theme.get("user_color", "")
-            print(f"{color}{prefix}{content}{reset}")
+            print(f"{color}{prefix}{formatted_content}{reset}")
         else:
             prefix = self.theme["prompt_prefix"]
             color = self.theme.get("prompt_color", "")
             text_color = self.theme.get("text_color", "")
-            print(f"{color}{prefix}AI:{reset} {text_color}{content}{reset}")
+            print(f"{color}{prefix}AI:{reset} {text_color}{formatted_content}{reset}")
             
         # Add visual separator after long messages
         if len(content) > 50:
@@ -988,6 +1063,7 @@ class CLIInterface:
                     "hello": "Hello! I'm Simple Signal AI. To use real inference, install transformers and load a model.",
                     "hi": "Hi there! I can help you with various tasks once properly configured.",
                     "help": "Available commands: quit/exit - Exit the application",
+                    "math": "Sure! Here is a LaTeX-rendered formula: $E = mc^2$, and a sum: $\\sum_{i=1}^{n} x_i$. Pretty neat, right?",
                     "default": "This is a demo response. For real AI inference, please set MODEL_PATH environment variable and install transformers."
                 }
                 
@@ -997,6 +1073,8 @@ class CLIInterface:
                     response = demo_responses["hello"]
                 elif "help" in lower_input:
                     response = demo_responses["help"]
+                elif any(kw in lower_input for kw in ["math", "latex", "formula"]):
+                    response = demo_responses["math"]
                 else:
                     response = demo_responses["default"]
                 
