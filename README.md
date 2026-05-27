@@ -89,6 +89,7 @@ python ai_cli.py
  - Type any message to chat with the AI
  - `/theme` - Open the interactive theme selector to switch themes
  - `/theme <name>` - Directly switch to a specific theme (e.g., `/theme matrix`)
+ - `/sudoku` - Play an interactive Sudoku game in the terminal (with `curses` and text fallbacks!)
  - `quit`, `exit`, or `q` - Exit the application
  - `help` - Show available commands (demo mode)
  
