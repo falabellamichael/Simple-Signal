@@ -1,16 +1,32 @@
 # Quick Start Guide
 
-## Step 1: Install Dependencies
+## 🎯 New: Automatic Model Selection!
+
+Starting from this update, you can now select a model interactively when launching the CLI!
+
+### Step 1: Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Step 2: Run in Demo Mode (No Model Required)
+### Step 2: Run and Select Your Model
 
 ```bash
 python ai_cli.py
 ```
+
+**If LM Studio is running**, you'll see an interactive model selector showing all available models with their sizes. Just pick a number!
+
+**If no API is detected**, it will run in demo mode or prompt for a MODEL_PATH.
+
+### Step 3: Chat with the AI
+
+Type messages and chat with the AI! Try:
+- "Hello!"
+- "What can you do?"
+- "Tell me a joke"
+- "Help me write code"
 
 Type messages and chat with the AI! Try:
 - "Hello!"

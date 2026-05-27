@@ -9,6 +9,46 @@ A stylish, terminal-based AI inference tool that provides a command prompt-style
 - 🚀 Local AI inference with support for various models
 - ⚡ Fast and efficient CLI interface
 - 📦 Easy setup with requirements.txt
+- 🎯 **Interactive Model Selector** - Choose from available models when starting!
+
+## New: Automatic Model Selection
+
+Starting from this update, you can now select a model interactively when launching the CLI! Simply run:
+
+```bash
+python ai_cli.py
+```
+
+If LM Studio is running locally, it will automatically detect it and show you a list of available models to choose from. No need to remember model paths or set environment variables!
+
+### How It Works
+
+1. **Auto-detects LM Studio** - Automatically connects to your local LM Studio instance
+2. **Shows Available Models** - Displays all models with their sizes and status
+3. **Interactive Selection** - Choose from a numbered list using your keyboard
+4. **GPU Acceleration** - Seamlessly uses LM Studio's GPU acceleration
+
+### Usage Examples
+
+#### Automatic Model Selection (Recommended)
+```bash
+python ai_cli.py
+# Shows model selector if LM Studio is running
+# Or prompts for MODEL_PATH if no API detected
+```
+
+#### Skip Model Selector
+If you want to skip the interactive selector:
+```bash
+python ai_cli.py --skip-selector
+# or
+MODEL_PATH="path/to/model" python ai_cli.py --skip-selector
+```
+
+#### With Specific Model Path
+```bash
+python ai_cli.py "path/to/your/model" --skip-selector
+```
 
 ## Installation
 

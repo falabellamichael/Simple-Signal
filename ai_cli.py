@@ -380,6 +380,22 @@ class CLIInterface:
         print(self.theme["separator"])
         print(f"{self.theme['info']}   Type 'quit' or press Ctrl+C to exit")
         print(self.theme["separator"] + "\n")
+
+    def _show_theme_info(self):
+        """Show available themes and current theme"""
+        print(self.theme["separator"])
+        print(f"\n{self.theme['success']}  THEME SELECTOR")
+        print(self.theme["separator"])
+        print(f"\nCurrent Theme: {self.theme_name}")
+        print("\nAvailable Themes:")
+        
+        for name, theme_data in self.THEMES.items():
+            status = "✅" if name == self.theme_name else "  "
+            print(f"  {status} {name}")
+        
+        print(self.theme["separator"])
+        print(f"\n{self.theme['info']}  Use '/theme' to view this menu at any time")
+        print(self.theme["separator"] + "\n")
     
     def print_message(self, role: str, content: str):
         """Print a message with appropriate prefix"""
@@ -400,6 +416,11 @@ class CLIInterface:
                 user_input = input(f"{self.theme['user_prefix']}You: ").strip()
                 
                 if not user_input:
+                    continue
+                
+                # Handle theme command
+                if user_input.lower() == '/theme':
+                    self._show_theme_info()
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
@@ -433,6 +454,11 @@ class CLIInterface:
                 user_input = input(f"{self.theme['user_prefix']}You: ").strip()
                 
                 if not user_input:
+                    continue
+                
+                # Handle theme command
+                if user_input.lower() == '/theme':
+                    self._show_theme_info()
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
@@ -476,8 +502,86 @@ class CLIInterface:
             self.run_demo_mode()
 
 
+def show_model_selector(ai):
+    """Show interactive model selector menu"""
+    print("\n" + "=" * 60)
+    print("📦 MODEL SELECTOR")
+    print("=" * 60)
+    
+    # Check for API connection first
+    lm_url = ai._check_lm_studio()
+    
+    if lm_url:
+        print(f"\n🌐 Connected to LM Studio at: {lm_url}")
+        
+        try:
+            import urllib.request
+            req = urllib.request.Request(f"{lm_url}/v1/models")
+            with urllib.request.urlopen(req, timeout=5.0) as response:
+                import json
+                models_data = json.loads(response.read().decode("utf-8"))
+                
+                if isinstance(models_data, list):
+                    models = models_data
+                elif isinstance(models_data, dict) and "data" in models_data:
+                    models = models_data.get("data", [])
+                else:
+                    models = []
+                
+                print(f"\n📋 Available Models ({len(models)} found):\n")
+                for i, model in enumerate(models, 1):
+                    id = model.get("id", "Unknown")
+                    details = model.get("details", {})
+                    size = details.get("size", details.get("size_in_bytes", "N/A"))
+                    if isinstance(size, int):
+                        size_str = f"{size / (1024**3):.1f} GB"
+                    else:
+                        size_str = str(size)
+                    
+                    status = model.get("status", "unknown").lower()
+                    status_icon = "✅" if status == "running" else "🔄"
+                    
+                    print(f"  {i}. {status_icon} {id}")
+                    if size_str != "N/A":
+                        print(f"     Size: {size_str}")
+                
+                print("\n💡 Select a model number to load, or press Enter to use default.")
+                
+                try:
+                    choice = input("Enter your choice [1-{}]: ".format(len(models))).strip()
+                    
+                    if choice.isdigit() and 1 <= int(choice) <= len(models):
+                        selected_model = models[int(choice) - 1]
+                        model_id = selected_model.get("id", "")
+                        print(f"\n🎯 Loading model: {model_id}")
+                        
+                        # Update AI with selected model URL (append /v1/chat/completions for API)
+                        ai.api_url = f"{lm_url}/chat/completions"
+                        ai.is_api = True
+                        return model_id
+                    else:
+                        print("\nℹ️  No model selected. Using default configuration.")
+                        return None
+                except KeyboardInterrupt:
+                    print("\n\n⚠️  Model selection cancelled.")
+                    return None
+                except Exception as e:
+                    print(f"\n❌ Error reading models: {e}")
+                    return None
+                    
+        except Exception as e:
+            print(f"\n⚠️  Could not list models: {e}")
+            print("Using default configuration.\n")
+            return None
+    else:
+        print("\nℹ️  No API connection detected.")
+        print("If you have LM Studio running, start it first to see available models.")
+        print("Or specify a model path via MODEL_PATH environment variable or command line argument.\n")
+        return None
+
+
 def main():
-    """Main function"""
+    """Main function with optional model selector"""
     # Fix Windows console UTF-8 issues
     if sys.platform == 'win32':
         try:
@@ -492,7 +596,26 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     
+    # Check for --skip-selector flag to skip the model selector
+    skip_selector = False
+    if len(sys.argv) > 2 and sys.argv[2].lower() in ['--skip-selector', '-s']:
+        skip_selector = True
+    
+    # Initialize AI with model path (if provided)
     ai = SimpleSignalAI(model_path=model_path)
+    
+    # Check if we're connected to an API (LM Studio)
+    lm_url = ai._check_lm_studio()
+    
+    # If no model path specified AND connected to API AND not skipping, show model selector by default
+    if not model_path and lm_url and not skip_selector:
+        print("\n🔍 Detecting available models...")
+        selected_model = show_model_selector(ai)
+        
+        # If a model was selected, reload with that model
+        if selected_model and ai.is_api:
+            print(f"\n✅ Model '{selected_model}' is now active.\n")
+    
     cli = CLIInterface(ai)
     cli.run()
 

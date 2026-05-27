@@ -31,9 +31,16 @@ python --version
    python test_install.py
    ```
 
-3. **Run the CLI:**
+3. **Run the CLI with Automatic Model Selection:**
    ```bash
    python ai_cli.py
+   ```
+   
+   **🎯 New Feature!** If LM Studio is running, you'll see an interactive model selector showing all available models. Just pick a number!
+
+   **To skip the model selector:**
+   ```bash
+   python ai_cli.py --skip-selector
    ```
 
 ### Option B: Using PowerShell Launcher

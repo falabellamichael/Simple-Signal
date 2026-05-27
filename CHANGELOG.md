@@ -1,6 +1,34 @@
 # Changelog
 
+## [1.1.0] - Model Selector Update
+
+### New Features
+- 🎯 **Interactive Model Selector** - Choose from available models when starting the CLI!
+  - Automatically detects LM Studio and shows all available models
+  - Interactive numbered menu to select models easily
+  - Shows model sizes, status (running/downloading), and details
+  - Works seamlessly with GPU acceleration via LM Studio
+
+### Improvements
+- **Automatic Model Detection** - No need to specify MODEL_PATH when using LM Studio
+- **Skip Selector Option** - Use `--skip-selector` flag to skip the interactive menu
+- **Better UX** - Models are displayed with icons showing their status (✅ running, 🔄 downloaded)
+
+### Usage Examples
+```bash
+# Automatic model selection (recommended)
+python ai_cli.py
+
+# Skip model selector
+python ai_cli.py --skip-selector
+
+# With specific model path
+MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct" python ai_cli.py --skip-selector
+```
+
 ## [1.0.0] - Initial Release
+
+### Features
 
 ### Features
 - 🎨 Beautiful terminal output with 3 themes (dark, light, cyberpunk)

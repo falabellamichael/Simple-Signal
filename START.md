@@ -16,17 +16,29 @@ python test_install.py
 
 ## Quick Start Commands
 
-### Option 1: Run in Demo Mode (No Model Required)
+### 🎯 Option 1: Run with Automatic Model Selection (NEW!)
 ```bash
 python ai_cli.py
 ```
-*Starts the CLI with a demo interface - no AI model needed!*
+*Starts the CLI and automatically shows a model selector if LM Studio is running! Choose from available models with your keyboard.*
 
-### Option 2: Run with a Pre-installed Model
+### Option 2: Run in Demo Mode (No Model Required)
 ```bash
-MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct" python ai_cli.py
+python ai_cli.py --skip-selector
 ```
-*Loads a real AI model for actual inference.*
+*Starts the CLI with a demo interface - no AI model needed. Use `--skip-selector` to skip the model selector.*
+
+### Option 3: Run with a Pre-installed Model
+```bash
+MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct" python ai_cli.py --skip-selector
+```
+*Loads a real AI model for actual inference. Use `--skip-selector` to skip the interactive menu.*
+
+### Option 4: Use the Windows Launcher (Batch File)
+```cmd
+run.bat
+```
+*Automatically detects if you have a MODEL_PATH set and starts accordingly.*
 
 ### Option 3: Use the Windows Launcher (Batch File)
 ```cmd

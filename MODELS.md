@@ -88,3 +88,78 @@ ollama run qwen2.5:0.5b "Your question here"
 - **Out of memory**: Use a smaller model or close other applications
 - **Slow loading**: Models take time to load on first run (cached afterwards)
 - **GPU not detected**: Ensure CUDA is installed and PyTorch supports your GPU
+
+## 🎯 New Model Selector Feature
+
+Starting from this update, you can now select a model interactively when launching the CLI!
+
+### How It Works
+
+When you run `python ai_cli.py` without specifying a model path, the application will:
+
+1. **Auto-detect LM Studio** - If LM Studio is running locally, it will automatically connect to it
+2. **Show Available Models** - Display all available models with their sizes and status
+3. **Interactive Selection** - Choose from a numbered list of models using your keyboard
+
+### Usage Examples
+
+#### Automatic Model Selection (Recommended)
+```bash
+python ai_cli.py
+# Will show model selector if LM Studio is running
+# Or prompt for MODEL_PATH if no API detected
+```
+
+#### Skip Model Selector
+If you want to skip the interactive selector and use a specific model:
+```bash
+# Using environment variable
+MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct" python ai_cli.py --skip-selector
+
+# Or using command line argument
+python ai_cli.py "path/to/model" --skip-selector
+```
+
+#### With LM Studio API
+If you have LM Studio running, just run:
+```bash
+python ai_cli.py
+# Automatically connects to LM Studio and shows model selector
+```
+
+### Benefits
+
+- ✅ No need to remember model paths
+- ✅ See all available models at a glance
+- ✅ Easy switching between different models
+- ✅ Works seamlessly with LM Studio's GPU acceleration
+- ✅ Shows model sizes and status (running/downloading)
+
+### Model Selector Display
+
+When the selector appears, you'll see:
+```
+📦 MODEL SELECTOR
+============================================================
+
+🌐 Connected to LM Studio at: http://localhost:1234/v1
+
+📋 Available Models (3 found):
+
+  1. ✅ Qwen/Qwen2.5-0.5B-Instruct
+     Size: 0.3 GB
+  2. ✅ Qwen/Qwen2.5-1.5B-Instruct
+     Size: 1.2 GB
+  3. ✅ Qwen/Qwen2.5-7B-Instruct
+     Size: 9.8 GB
+
+💡 Select a model number to load, or press Enter to use default.
+Enter your choice [1-3]: 
+```
+
+### Tips
+
+- **LM Studio must be running** - Start LM Studio before launching the CLI for automatic detection
+- **Models show as "running"** - Only models that are currently loaded will show with a ✅ icon
+- **Downloaded but not running** - Models that are downloaded but not active will show with 🔄
+- **Press Enter** - If you press Enter without selecting, it uses the default configuration

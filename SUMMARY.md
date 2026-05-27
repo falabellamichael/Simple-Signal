@@ -58,6 +58,7 @@ run.bat
 - 🚀 **Local AI Inference**: Works with any Hugging Face model
 - ⚡ **Demo Mode**: Explore without installing a model
 - 📦 **Easy Setup**: One-command installation
+- 🎯 **Model Selector**: Interactive menu to choose from available models!
 
 ## Supported Models
 
