@@ -9,6 +9,8 @@ import os
 import random
 import re
 import sys
+import threading
+import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -722,6 +724,48 @@ def play_sudoku_text(puzzle: List[List[int]], solution: List[List[int]]):
             print("\n⚠️ Error parsing command. Try again.\n")
 
 
+class ThinkingSpinner:
+    """A CLI spinner that runs in a background thread to indicate thinking or loading"""
+    def __init__(self, prefix: str = "🤖 ", prompt_color: str = "", text_color: str = "", message: str = "Thinking..."):
+        self.prefix = prefix
+        self.prompt_color = prompt_color
+        self.text_color = text_color
+        self.message = message
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def _spin(self):
+        chars = ["/", "-", "\\", "|"]
+        reset = "\033[0m"
+        i = 0
+        while not self.stop_event.is_set():
+            char = chars[i % len(chars)]
+            sys.stdout.write(f"\r{self.prompt_color}{self.prefix}AI:{reset} {self.text_color}{self.message} {char}{reset}")
+            sys.stdout.flush()
+            i += 1
+            time.sleep(0.1)
+        # Clear the spinner line
+        sys.stdout.write("\r\033[K")
+        sys.stdout.flush()
+
+    def start(self):
+        self.stop_event.clear()
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        if self.thread:
+            self.stop_event.set()
+            self.thread.join(timeout=1.0)
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+
 class CLIInterface:
     """Command-line interface with styling"""
     
@@ -995,8 +1039,15 @@ class CLIInterface:
                 # Add user message to conversation history
                 conversation.append({"role": "user", "content": user_input})
                 
-                # Generate response using chat history
-                response = self.ai.chat(conversation)
+                # Generate response using chat history with a visual thinking spinner
+                spinner = ThinkingSpinner(
+                    prefix=self.theme["prompt_prefix"],
+                    prompt_color=self.theme.get("prompt_color", ""),
+                    text_color=self.theme.get("text_color", ""),
+                    message="Thinking..."
+                )
+                with spinner:
+                    response = self.ai.chat(conversation)
                 self.print_message("assistant", response)
                 
                 # Add assistant response to conversation history
@@ -1078,6 +1129,16 @@ class CLIInterface:
                     response = demo_responses["math"]
                 else:
                     response = demo_responses["default"]
+                
+                # Show spinner during demo mode thinking time (simulated delay)
+                spinner = ThinkingSpinner(
+                    prefix=self.theme["prompt_prefix"],
+                    prompt_color=self.theme.get("prompt_color", ""),
+                    text_color=self.theme.get("text_color", ""),
+                    message="Thinking..."
+                )
+                with spinner:
+                    time.sleep(random.uniform(0.3, 0.6))
                 
                 self.print_message("assistant", response)
                     
