@@ -226,23 +226,31 @@ body {
     text-align: center;
     font-weight: 500;
     opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 10px;
 }
 
 .terminal-actions {
     display: flex;
-    gap: 15px;
+    align-items: center;
+    gap: 12px;
 }
 
 .select-wrapper {
     display: flex;
-    align-items: center;
-    gap: 5px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
 }
 
 .select-wrapper label {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: bold;
 }
 
 .select-wrapper select {
@@ -250,7 +258,7 @@ body {
     border: 1px solid var(--border-color);
     color: var(--text-color);
     border-radius: 4px;
-    padding: 2px 6px;
+    padding: 3px 6px;
     outline: none;
     cursor: pointer;
     font-family: inherit;
@@ -265,6 +273,18 @@ body {
 .select-wrapper select option {
     background-color: var(--terminal-bg);
     color: var(--text-color);
+}
+
+#backend-selector {
+    width: 100px;
+}
+
+#model-selector {
+    width: 110px;
+}
+
+#theme-selector {
+    width: 80px;
 }
 
 /* TERMINAL OUTPUT SCREEN */
@@ -652,20 +672,35 @@ body {
 
 /* HEADER ACTION BUTTONS */
 .header-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-color);
     border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 0.75rem;
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    line-height: 1.2;
     cursor: pointer;
     font-family: inherit;
     transition: border-color 0.2s ease, background-color 0.2s ease;
+    min-width: 55px;
 }
 
 .header-action-btn:hover {
     border-color: var(--accent-color);
     background-color: var(--input-focus-bg);
+}
+
+.header-action-btn .btn-icon {
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+}
+
+.header-action-btn .btn-text {
+    font-weight: 500;
 }
 
 /* Paragraph blocks inside message content */
