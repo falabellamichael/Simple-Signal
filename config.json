@@ -11,7 +11,7 @@
     "max_tokens": 512
   },
   "output": {
-    "theme": "matrix",
+    "theme": "forest",
     "verbose": true
   }
 }

@@ -734,11 +734,11 @@ class CLIInterface:
             "success": "✅ ",
             "error": "❌ ",
             "warning": "⚠️ ",
-            "bg_color": "\033[40m",
-            "text_color": "\033[0m",
-            "prompt_color": "\033[94m",
-            "user_color": "\033[90m",
-            "accent_color": "\033[94m"
+            "bg_color": "",
+            "text_color": "\033[38;5;253m",
+            "prompt_color": "\033[1;38;5;111m",
+            "user_color": "\033[38;5;244m",
+            "accent_color": "\033[38;5;111m"
         },
         "light": {
             "prompt_prefix": "🤖 ",
@@ -748,39 +748,39 @@ class CLIInterface:
             "success": "✅ ",
             "error": "❌ ",
             "warning": "⚠️ ",
-            "bg_color": "\033[47m",
-            "text_color": "\033[0m",
-            "prompt_color": "\033[34m",
-            "user_color": "\033[30m",
-            "accent_color": "\033[34m"
+            "bg_color": "",
+            "text_color": "\033[38;5;255m",
+            "prompt_color": "\033[1;38;5;231m",
+            "user_color": "\033[38;5;252m",
+            "accent_color": "\033[38;5;250m"
         },
         "cyberpunk": {
             "prompt_prefix": "🔮 ",
-            "user_prefix": "💬 ",
-            "separator": "▓" * 60,
-            "info": "[INFO]",
-            "success": "[OK]",
-            "error": "[ERR]",
-            "warning": "[WARN]",
+            "user_prefix": "⚡ ",
+            "separator": "░▒▓" * 20,
+            "info": "⚡ ",
+            "success": "✨ ",
+            "error": "🚨 ",
+            "warning": "⚠️ ",
             "bg_color": "",
-            "text_color": "\033[97m",
-            "prompt_color": "\033[91m",
-            "user_color": "\033[96m",
-            "accent_color": "\033[95m"
+            "text_color": "\033[38;5;226m",
+            "prompt_color": "\033[1;38;5;201m",
+            "user_color": "\033[38;5;51m",
+            "accent_color": "\033[38;5;201m"
         },
         "matrix": {
             "prompt_prefix": "📟 ",
-            "user_prefix": "👤 ",
+            "user_prefix": "💾 ",
             "separator": "═" * 60,
-            "info": "[SYS]",
-            "success": "[RUN]",
-            "error": "[ERR]",
-            "warning": "[WRN]",
+            "info": "[SYS] ",
+            "success": "[RUN] ",
+            "error": "[ERR] ",
+            "warning": "[WRN] ",
             "bg_color": "",
-            "text_color": "\033[92m",
-            "prompt_color": "\033[1;92m",
-            "user_color": "\033[32m",
-            "accent_color": "\033[92m"
+            "text_color": "\033[38;5;47m",
+            "prompt_color": "\033[1;38;5;46m",
+            "user_color": "\033[38;5;28m",
+            "accent_color": "\033[38;5;46m"
         },
         "sunset": {
             "prompt_prefix": "🌅 ",
@@ -791,54 +791,55 @@ class CLIInterface:
             "error": "🔥 ",
             "warning": "⚡ ",
             "bg_color": "",
-            "text_color": "\033[93m",
-            "prompt_color": "\033[91m",
-            "user_color": "\033[95m",
-            "accent_color": "\033[91m"
+            "text_color": "\033[38;5;220m",
+            "prompt_color": "\033[1;38;5;202m",
+            "user_color": "\033[38;5;208m",
+            "accent_color": "\033[38;5;202m"
         },
         "ocean": {
-            "prompt_prefix": "🐬 ",
-            "user_prefix": "👤 ",
+            "prompt_prefix": "🌊 ",
+            "user_prefix": "⛵ ",
             "separator": "≈" * 60,
-            "info": "🌀 ",
+            "info": "🐬 ",
             "success": "🌊 ",
             "error": "🚨 ",
             "warning": "⚠️ ",
             "bg_color": "",
-            "text_color": "\033[96m",
-            "prompt_color": "\033[94m",
-            "user_color": "\033[36m",
-            "accent_color": "\033[96m"
+            "text_color": "\033[38;5;153m",
+            "prompt_color": "\033[1;38;5;33m",
+            "user_color": "\033[38;5;75m",
+            "accent_color": "\033[38;5;39m"
         },
         "forest": {
             "prompt_prefix": "🌿 ",
-            "user_prefix": "🍁 ",
+            "user_prefix": "🌲 ",
             "separator": "─" * 60,
-            "info": "ℹ️ ",
+            "info": "🌿 ",
             "success": "🍃 ",
             "error": "🍂 ",
             "warning": "⚠️ ",
             "bg_color": "",
-            "text_color": "\033[32m",
-            "prompt_color": "\033[92m",
-            "user_color": "\033[33m",
-            "accent_color": "\033[32m"
+            "text_color": "\033[38;5;107m",
+            "prompt_color": "\033[1;38;5;34m",
+            "user_color": "\033[38;5;94m",
+            "accent_color": "\033[38;5;71m"
         },
         "dracula": {
             "prompt_prefix": "🧛 ",
             "user_prefix": "🦇 ",
             "separator": "─" * 60,
-            "info": "ℹ️ ",
-            "success": "🔮 ",
-            "error": "❌ ",
+            "info": "🔮 ",
+            "success": "✨ ",
+            "error": "🩸 ",
             "warning": "⚠️ ",
             "bg_color": "",
-            "text_color": "\033[97m",
-            "prompt_color": "\033[95m",
-            "user_color": "\033[94m",
-            "accent_color": "\033[95m"
+            "text_color": "\033[38;5;231m",
+            "prompt_color": "\033[1;38;5;141m",
+            "user_color": "\033[38;5;212m",
+            "accent_color": "\033[38;5;117m"
         }
     }
+
     
     def __init__(self, ai: SimpleSignalAI):
         self.ai = ai
