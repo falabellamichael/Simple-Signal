@@ -94,6 +94,7 @@ class SimpleSignalAI:
         self.is_api = False
         self.api_url = None
         self.selected_model = None
+        self.force_local = False
         if self.model_path:
             cleaned = self.model_path.strip('"\'')
             if cleaned.startswith("http://") or cleaned.startswith("https://"):
@@ -211,12 +212,13 @@ class SimpleSignalAI:
             return True
 
         # 2. Check if local LM Studio is running
-        lm_url = self._check_lm_studio()
-        if lm_url:
-            self.is_api = True
-            self.api_url = lm_url
-            print(f"🌐 Connected via GPU acceleration to LM Studio: {self.api_url}\n")
-            return True
+        if not self.force_local:
+            lm_url = self._check_lm_studio()
+            if lm_url:
+                self.is_api = True
+                self.api_url = lm_url
+                print(f"🌐 Connected via GPU acceleration to LM Studio: {self.api_url}\n")
+                return True
 
         # 3. Fallback to local model loading via transformers
         if not HAS_TRANSFORMERS:
@@ -1319,8 +1321,62 @@ def show_model_selector(ai):
         return None
 
 
+def show_backend_selector(ai):
+    """Show interactive backend selector menu"""
+    print("\n" + "=" * 60)
+    print("🔌 SELECT BACKEND ENGINE")
+    print("=" * 60)
+    print("  1. 🌐 LM Studio (Local API Server - GPU accelerated via Vulkan/DirectML)")
+    print("  2. 🐍 PyTorch (Transformers - Local Hugging Face Models)")
+    print("\n💡 Select a backend number, or press Enter to auto-detect.")
+    
+    try:
+        choice = input("Enter your choice [1-2]: ").strip()
+        if choice == "1":
+            lm_url = ai._check_lm_studio()
+            ai.force_local = False
+            if lm_url:
+                ai.is_api = True
+                ai.api_url = f"{lm_url}/chat/completions"
+                print(f"\n✅ LM Studio Backend active (URL: {ai.api_url})")
+                return "api"
+            else:
+                print("\n⚠️  LM Studio server not detected running on default ports.")
+                print("Make sure LM Studio is running and the local server is started!")
+                # Default fallback
+                ai.is_api = True
+                ai.api_url = "http://127.0.0.1:1234/v1/chat/completions"
+                print(f"Fallback LM Studio active at default address (URL: {ai.api_url})")
+                return "api"
+        elif choice == "2":
+            ai.is_api = False
+            ai.force_local = True
+            print("\n✅ PyTorch Local Transformers Backend active")
+            return "local"
+        else:
+            # Auto-detection
+            lm_url = ai._check_lm_studio()
+            if lm_url:
+                ai.is_api = True
+                ai.api_url = f"{lm_url}/chat/completions"
+                ai.force_local = False
+                print(f"\n🔍 Auto-detected running LM Studio server. Using LM Studio API Backend.")
+                return "api"
+            else:
+                ai.is_api = False
+                ai.force_local = True
+                print(f"\n🔍 No LM Studio server detected. Defaulting to PyTorch Local Backend.")
+                return "local"
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Backend selection cancelled.")
+        return None
+    except Exception as e:
+        print(f"\n❌ Error selecting backend: {e}")
+        return None
+
+
 def main():
-    """Main function with optional model selector"""
+    """Main function with optional backend and model selector"""
     # Fix Windows console UTF-8 issues
     if sys.platform == 'win32':
         try:
@@ -1335,7 +1391,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     
-    # Check for --skip-selector flag to skip the model selector
+    # Check for --skip-selector flag to skip selection menus
     skip_selector = False
     if len(sys.argv) > 2 and sys.argv[2].lower() in ['--skip-selector', '-s']:
         skip_selector = True
@@ -1343,19 +1399,23 @@ def main():
     # Initialize AI with model path (if provided)
     ai = SimpleSignalAI(model_path=model_path)
     
-    # Check if we're connected to an API (LM Studio)
-    lm_url = ai._check_lm_studio()
-    
-    # If no model path specified AND connected to API AND not skipping, show model selector by default
-    if not model_path and lm_url and not skip_selector:
-        print("\n🔍 Detecting available models...")
-        selected_model = show_model_selector(ai)
+    # If no model path specified AND not skipping, show backend selector
+    if not model_path and not skip_selector:
+        backend_choice = show_backend_selector(ai)
         
-        # If a model was selected, reload with that model
-        if selected_model and ai.is_api:
-            ai.selected_model = selected_model
-            print(f"\n✅ Model '{selected_model}' is now active.\n")
-    
+        # If LM Studio was selected, show the model selector
+        if backend_choice == "api":
+            selected_model = show_model_selector(ai)
+            if selected_model and ai.is_api:
+                ai.selected_model = selected_model
+                print(f"\n✅ Model '{selected_model}' is now active.\n")
+        elif backend_choice == "local":
+            print("\n🔍 Loading local PyTorch model resources...")
+            ai.load_model()
+    else:
+        # Load default/autodetected model
+        ai.load_model()
+        
     cli = CLIInterface(ai)
     cli.run()
 

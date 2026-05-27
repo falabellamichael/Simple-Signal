@@ -38,6 +38,14 @@
                 <button id="toggle-history-btn" class="header-action-btn" title="Toggle History Sidebar">📁 Sessions</button>
                 <!-- Query GPU Info -->
                 <button id="gpu-info-btn" class="header-action-btn" title="Display GPU hardware details">🔌 GPU Info</button>
+                <!-- Backend Select -->
+                <div class="select-wrapper">
+                    <label for="backend-selector">Engine:</label>
+                    <select id="backend-selector">
+                        <option value="api">LM Studio (API)</option>
+                        <option value="local">PyTorch (Local)</option>
+                    </select>
+                </div>
                 <!-- Model Select -->
                 <div class="select-wrapper" id="model-select-wrapper" style="display: none;">
                     <label for="model-selector">Model:</label>

@@ -13,6 +13,7 @@ const terminalScreen = document.getElementById('terminal-screen');
 const chatInput = document.getElementById('chat-input');
 const actionBtn = document.getElementById('action-btn');
 const themeSelector = document.getElementById('theme-selector');
+const backendSelector = document.getElementById('backend-selector');
 const modelSelector = document.getElementById('model-selector');
 const modelSelectWrapper = document.getElementById('model-select-wrapper');
 
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     chatInput.addEventListener('keydown', handleKeydown);
     actionBtn.addEventListener('click', handleAction);
     themeSelector.addEventListener('change', handleThemeChange);
+    backendSelector.addEventListener('change', handleBackendChange);
     modelSelector.addEventListener('change', handleModelChange);
     
     // Window control buttons listeners
@@ -89,6 +91,17 @@ async function loadConfig() {
             // Set theme attribute on body
             document.body.setAttribute('data-theme', config.theme);
             themeSelector.value = config.theme;
+            
+            // Set backend state
+            const activeBackend = config.is_api ? 'api' : 'local';
+            backendSelector.value = activeBackend;
+            
+            // Toggle model selector visibility based on backend
+            if (activeBackend === 'api') {
+                modelSelectWrapper.style.display = 'flex';
+            } else {
+                modelSelectWrapper.style.display = 'none';
+            }
         }
     } catch (e) {
         console.error('Failed to load config:', e);
@@ -115,7 +128,10 @@ async function loadModels() {
                     modelSelector.appendChild(opt);
                 });
                 
-                modelSelectWrapper.style.display = 'flex';
+                // Show model wrapper ONLY if backend is API
+                if (backendSelector.value === 'api') {
+                    modelSelectWrapper.style.display = 'flex';
+                }
             } else {
                 modelSelectWrapper.style.display = 'none';
             }
@@ -140,6 +156,32 @@ async function handleThemeChange() {
         appendSystemOutput(`Theme updated to: ${selectedTheme}`);
     } catch (e) {
         console.error('Failed to update theme:', e);
+    }
+}
+
+// Send backend selection change back to server
+async function handleBackendChange() {
+    const selectedBackend = backendSelector.value;
+    
+    try {
+        const res = await fetch('/api/backend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ backend: selectedBackend })
+        });
+        
+        if (res.ok) {
+            if (selectedBackend === 'api') {
+                appendSystemOutput(`Backend engine set to: LM Studio (API)`);
+                modelSelectWrapper.style.display = 'flex';
+                await loadModels();
+            } else {
+                appendSystemOutput(`Backend engine set to: PyTorch (Local)`);
+                modelSelectWrapper.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        console.error('Failed to update backend selection:', e);
     }
 }
 

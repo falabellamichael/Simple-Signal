@@ -54,6 +54,9 @@ class ConfigUpdate(BaseModel):
 class ModelSelect(BaseModel):
     model: str
 
+class BackendSelect(BaseModel):
+    backend: str
+
 def get_gpu_info_data_sync():
     """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
     gpu_list = []
@@ -438,6 +441,34 @@ def select_model(data: ModelSelect):
             ai.is_api = True
             ai.api_url = f"{lm_url}/chat/completions"
     return {"status": "success", "selected": ai.selected_model}
+
+@app.post("/api/backend")
+def select_backend(data: BackendSelect):
+    """Switch between LM Studio (API) and PyTorch (Local) backend modes"""
+    if data.backend == "api":
+        lm_url = ai._check_lm_studio()
+        ai.is_api = True
+        ai.force_local = False
+        if lm_url:
+            ai.api_url = f"{lm_url}/chat/completions"
+        else:
+            ai.api_url = "http://127.0.0.1:1234/v1/chat/completions"
+    elif data.backend == "local":
+        ai.is_api = False
+        ai.force_local = True
+        if ai.model is None and HAS_TRANSFORMERS:
+            # Load local model path/resources if configured
+            ai.load_model()
+    else:
+        raise HTTPException(status_code=400, detail="Invalid backend mode")
+        
+    return {
+        "status": "success",
+        "backend": "api" if ai.is_api else "local",
+        "is_api": ai.is_api,
+        "force_local": ai.force_local,
+        "has_local_model": ai.model is not None
+    }
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
