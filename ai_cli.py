@@ -38,10 +38,11 @@ class SimpleSignalAI:
         self.tokenizer = None
         self.model = None
         self.config = self._load_config()
-        # Set up compute device: DirectML (AMD GPU) -> CUDA (NVIDIA GPU) -> CPU
-        if HAS_DML:
-            self.device = torch_directml.device()
-        elif HAS_TORCH and torch.cuda.is_available():
+        # Set up compute device: CUDA (NVIDIA GPU) -> CPU
+        # Note: DirectML (AMD GPU) is disabled for local PyTorch loading because the DirectML compiler
+        # has known bugs with Qwen/Llama architectures, resulting in random gibberish.
+        # AMD users should run the LM Studio local server (Vulkan/DirectML backend) which runs flawlessly.
+        if HAS_TORCH and torch.cuda.is_available():
             self.device = "cuda"
         else:
             self.device = "cpu"
