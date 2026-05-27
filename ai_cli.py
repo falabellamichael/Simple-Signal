@@ -907,6 +907,38 @@ class CLIInterface:
         print(f"{self.theme['info']}   Type 'quit' or press Ctrl+C to exit")
         print(accent + self.theme["separator"] + reset + "\n")
 
+    def _show_help(self):
+        """Show list of commands and summary of the program"""
+        accent = self.theme.get("accent_color", "")
+        text_color = self.theme.get("text_color", "")
+        reset = "\033[0m"
+        
+        print("\n" + accent + self.theme["separator"] + reset)
+        print(f"{self.theme['success']}  " + accent + "Simple Signal CLI - Help & Summary" + reset)
+        print(accent + self.theme["separator"] + reset)
+        
+        print(f"\n{self.theme['info']}  {accent}SUMMARY:{reset}")
+        print(f"       Simple Signal CLI is a local AI inference command-line interface.")
+        print(f"       It enables interactive chat with local GGUF/Hugging Face models")
+        print(f"       or local API endpoints (like LM Studio) with GPU acceleration.")
+        print(f"       Features include LaTeX math rendering, terminal games, and web search.")
+        
+        print(f"\n{self.theme['info']}  {accent}AVAILABLE COMMANDS:{reset}")
+        commands = [
+            ("/help", "Show this help menu with a program summary and command descriptions."),
+            ("/theme", "Open the interactive theme selector menu to switch themes."),
+            ("/theme <name>", "Directly change to a specific theme (e.g., '/theme forest')."),
+            ("/search <query>", "Search the web/DuckDuckGo and view formatted results inline."),
+            ("/sudoku", "Start an interactive 9x9 Sudoku puzzle game in the terminal."),
+            ("quit / exit / q", "Exit the application.")
+        ]
+        
+        for cmd, desc in commands:
+            cmd_color = self.theme.get("prompt_color", "")
+            print(f"       {cmd_color}{cmd:<18}{reset} {text_color}{desc}{reset}")
+            
+        print("\n" + accent + self.theme["separator"] + reset + "\n")
+
     def _show_theme_info(self):
         """Show available themes and current theme"""
         accent = self.theme.get("accent_color", "")
@@ -1000,6 +1032,11 @@ class CLIInterface:
                 if not user_input:
                     continue
                 
+                # Handle help command
+                if user_input.lower() in ['/help', 'help']:
+                    self._show_help()
+                    continue
+                
                 # Handle theme command
                 if user_input.lower().startswith('/theme'):
                     parts = user_input.split(maxsplit=1)
@@ -1086,6 +1123,11 @@ class CLIInterface:
                 user_input = input(f"{self.theme['user_prefix']}You: ").strip()
                 
                 if not user_input:
+                    continue
+                
+                # Handle help command
+                if user_input.lower() in ['/help', 'help']:
+                    self._show_help()
                     continue
                 
                 # Handle theme command
