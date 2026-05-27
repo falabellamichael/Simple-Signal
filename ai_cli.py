@@ -124,6 +124,15 @@ class SimpleSignalAI:
                 "verbose": True
             }
         }
+        
+    def _save_config(self):
+        """Save configuration to config.json"""
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=2)
+        except Exception:
+            pass
     
     def _check_lm_studio(self) -> Optional[str]:
         """Check if LM Studio is running locally on localhost or 127.0.0.1"""
@@ -406,7 +415,10 @@ class CLIInterface:
             "error": "❌ ",
             "warning": "⚠️ ",
             "bg_color": "\033[40m",
-            "text_color": "\033[0m"
+            "text_color": "\033[0m",
+            "prompt_color": "\033[94m",
+            "user_color": "\033[90m",
+            "accent_color": "\033[94m"
         },
         "light": {
             "prompt_prefix": "🤖 ",
@@ -417,7 +429,10 @@ class CLIInterface:
             "error": "❌ ",
             "warning": "⚠️ ",
             "bg_color": "\033[47m",
-            "text_color": "\033[0m"
+            "text_color": "\033[0m",
+            "prompt_color": "\033[34m",
+            "user_color": "\033[30m",
+            "accent_color": "\033[34m"
         },
         "cyberpunk": {
             "prompt_prefix": "🔮 ",
@@ -428,7 +443,80 @@ class CLIInterface:
             "error": "[ERR]",
             "warning": "[WARN]",
             "bg_color": "",
-            "text_color": "\033[91m"
+            "text_color": "\033[97m",
+            "prompt_color": "\033[91m",
+            "user_color": "\033[96m",
+            "accent_color": "\033[95m"
+        },
+        "matrix": {
+            "prompt_prefix": "📟 ",
+            "user_prefix": "👤 ",
+            "separator": "═" * 60,
+            "info": "[SYS]",
+            "success": "[RUN]",
+            "error": "[ERR]",
+            "warning": "[WRN]",
+            "bg_color": "",
+            "text_color": "\033[92m",
+            "prompt_color": "\033[1;92m",
+            "user_color": "\033[32m",
+            "accent_color": "\033[92m"
+        },
+        "sunset": {
+            "prompt_prefix": "🌅 ",
+            "user_prefix": "👤 ",
+            "separator": "─" * 60,
+            "info": "🌅 ",
+            "success": "🍊 ",
+            "error": "🔥 ",
+            "warning": "⚡ ",
+            "bg_color": "",
+            "text_color": "\033[93m",
+            "prompt_color": "\033[91m",
+            "user_color": "\033[95m",
+            "accent_color": "\033[91m"
+        },
+        "ocean": {
+            "prompt_prefix": "🐬 ",
+            "user_prefix": "👤 ",
+            "separator": "≈" * 60,
+            "info": "🌀 ",
+            "success": "🌊 ",
+            "error": "🚨 ",
+            "warning": "⚠️ ",
+            "bg_color": "",
+            "text_color": "\033[96m",
+            "prompt_color": "\033[94m",
+            "user_color": "\033[36m",
+            "accent_color": "\033[96m"
+        },
+        "forest": {
+            "prompt_prefix": "🌿 ",
+            "user_prefix": "🍁 ",
+            "separator": "─" * 60,
+            "info": "ℹ️ ",
+            "success": "🍃 ",
+            "error": "🍂 ",
+            "warning": "⚠️ ",
+            "bg_color": "",
+            "text_color": "\033[32m",
+            "prompt_color": "\033[92m",
+            "user_color": "\033[33m",
+            "accent_color": "\033[32m"
+        },
+        "dracula": {
+            "prompt_prefix": "🧛 ",
+            "user_prefix": "🦇 ",
+            "separator": "─" * 60,
+            "info": "ℹ️ ",
+            "success": "🔮 ",
+            "error": "❌ ",
+            "warning": "⚠️ ",
+            "bg_color": "",
+            "text_color": "\033[97m",
+            "prompt_color": "\033[95m",
+            "user_color": "\033[94m",
+            "accent_color": "\033[95m"
         }
     }
     
@@ -439,41 +527,100 @@ class CLIInterface:
         
     def print_header(self):
         """Print the application header"""
-        print("\n" + self.theme["separator"])
-        print(f"{self.theme['success']}  Simple Signal CLI v1.0")
-        print(f"{self.theme['info']}   Local AI Inference Interface")
-        print(f"{self.theme['separator']}")
+        accent = self.theme.get("accent_color", "")
+        reset = "\033[0m"
+        print("\n" + accent + self.theme["separator"] + reset)
+        print(f"{self.theme['success']}  " + accent + "Simple Signal CLI v1.0" + reset)
+        print(f"{self.theme['info']}   " + accent + "Local AI Inference Interface" + reset)
+        print(accent + self.theme["separator"] + reset)
         
     def print_footer(self):
         """Print the application footer"""
-        print(self.theme["separator"])
+        accent = self.theme.get("accent_color", "")
+        reset = "\033[0m"
+        print(accent + self.theme["separator"] + reset)
         print(f"{self.theme['info']}   Type 'quit' or press Ctrl+C to exit")
-        print(self.theme["separator"] + "\n")
+        print(accent + self.theme["separator"] + reset + "\n")
 
     def _show_theme_info(self):
         """Show available themes and current theme"""
-        print(self.theme["separator"])
+        accent = self.theme.get("accent_color", "")
+        reset = "\033[0m"
+        print(accent + self.theme["separator"] + reset)
         print(f"\n{self.theme['success']}  THEME SELECTOR")
-        print(self.theme["separator"])
+        print(accent + self.theme["separator"] + reset)
         print(f"\nCurrent Theme: {self.theme_name}")
         print("\nAvailable Themes:")
         
         for name, theme_data in self.THEMES.items():
             status = "✅" if name == self.theme_name else "  "
-            print(f"  {status} {name}")
+            color = theme_data.get("prompt_color", "")
+            print(f"  {status} {color}{name}{reset}")
         
-        print(self.theme["separator"])
-        print(f"\n{self.theme['info']}  Use '/theme' to view this menu at any time")
-        print(self.theme["separator"] + "\n")
-    
+        print(accent + self.theme["separator"] + reset)
+        print(f"\n{self.theme['info']}  Use '/theme' to open the interactive theme selector,")
+        print(f"       or '/theme <name>' to switch directly.")
+        print(accent + self.theme["separator"] + reset + "\n")
+
+    def _select_theme_interactive(self):
+        """Interactively select and change the CLI theme"""
+        accent = self.theme.get("accent_color", "")
+        reset = "\033[0m"
+        print(accent + self.theme["separator"] + reset)
+        print(f"\n{self.theme['success']}  THEME SELECTOR")
+        print(accent + self.theme["separator"] + reset)
+        print(f"\nCurrent Theme: {self.theme_name}")
+        print("\nAvailable Themes:")
+        
+        themes_list = list(self.THEMES.keys())
+        for i, name in enumerate(themes_list, 1):
+            status = "✅" if name == self.theme_name else "  "
+            color = self.THEMES[name].get("prompt_color", "")
+            print(f"  {i}. {status} {color}{name}{reset}")
+        
+        print(accent + self.theme["separator"] + reset)
+        try:
+            choice = input(f"\nSelect a theme [1-{len(themes_list)}] or type the name: ").strip()
+            if not choice:
+                return
+            
+            selected_theme = None
+            if choice.isdigit() and 1 <= int(choice) <= len(themes_list):
+                selected_theme = themes_list[int(choice) - 1]
+            else:
+                choice_lower = choice.lower()
+                if choice_lower in self.THEMES:
+                    selected_theme = choice_lower
+                
+            if selected_theme:
+                self.theme_name = selected_theme
+                self.theme = self.THEMES[selected_theme]
+                self.ai.config["output"]["theme"] = selected_theme
+                self.ai._save_config()
+                print(f"\n{self.theme['success']} Theme successfully changed to '{selected_theme}'!\n")
+            else:
+                print(f"\n{self.theme['error']} Invalid selection. Theme unchanged.\n")
+        except KeyboardInterrupt:
+            print("\n\n⚠️ Theme selection cancelled.")
+
     def print_message(self, role: str, content: str):
-        """Print a message with appropriate prefix"""
-        prefix = self.theme["user_prefix"] if role == "user" else self.theme["prompt_prefix"]
-        print(f"{prefix}{content}")
+        """Print a message with appropriate prefix and coloring"""
+        reset = "\033[0m"
+        if role == "user":
+            prefix = self.theme["user_prefix"]
+            color = self.theme.get("user_color", "")
+            print(f"{color}{prefix}{content}{reset}")
+        else:
+            prefix = self.theme["prompt_prefix"]
+            color = self.theme.get("prompt_color", "")
+            text_color = self.theme.get("text_color", "")
+            print(f"{color}{prefix}AI:{reset} {text_color}{content}{reset}")
+            
         # Add visual separator after long messages
         if len(content) > 50:
-            print("─" * (len(content) + 10))
-    
+            accent = self.theme.get("accent_color", "")
+            print(accent + "─" * 60 + reset)
+            
     def run_interactive(self):
         """Run interactive chat mode"""
         self.print_header()
@@ -488,8 +635,20 @@ class CLIInterface:
                     continue
                 
                 # Handle theme command
-                if user_input.lower() == '/theme':
-                    self._show_theme_info()
+                if user_input.lower().startswith('/theme'):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) > 1:
+                        requested = parts[1].lower().strip()
+                        if requested in self.THEMES:
+                            self.theme_name = requested
+                            self.theme = self.THEMES[requested]
+                            self.ai.config["output"]["theme"] = requested
+                            self.ai._save_config()
+                            print(f"\n{self.theme['success']} Theme successfully changed to '{requested}'!\n")
+                        else:
+                            print(f"\n{self.theme['error']} Theme '{requested}' not found. Available: {', '.join(self.THEMES.keys())}\n")
+                    else:
+                        self._select_theme_interactive()
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
@@ -526,8 +685,20 @@ class CLIInterface:
                     continue
                 
                 # Handle theme command
-                if user_input.lower() == '/theme':
-                    self._show_theme_info()
+                if user_input.lower().startswith('/theme'):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) > 1:
+                        requested = parts[1].lower().strip()
+                        if requested in self.THEMES:
+                            self.theme_name = requested
+                            self.theme = self.THEMES[requested]
+                            self.ai.config["output"]["theme"] = requested
+                            self.ai._save_config()
+                            print(f"\n{self.theme['success']} Theme successfully changed to '{requested}'!\n")
+                        else:
+                            print(f"\n{self.theme['error']} Theme '{requested}' not found. Available: {', '.join(self.THEMES.keys())}\n")
+                    else:
+                        self._select_theme_interactive()
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
@@ -559,7 +730,7 @@ class CLIInterface:
                 print("\n\n" + self.theme["warning"] + "Interrupted by user.")
                 self.print_footer()
                 break
-    
+                
     def run(self):
         """Main entry point"""
         # Try loading model (API or local)
