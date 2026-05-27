@@ -1,16 +1,23 @@
 # Simple Signal CLI Dependencies
+#
+# 💡 IMPORTANT: If you are using LM Studio (API Mode), you do NOT need to install
+# any of these heavy ML dependencies! The CLI will connect via built-in Python libraries.
+# Just run `python ai_cli.py` directly.
+#
+# -------------------------------------------------------------
+# For Local Model Loading Mode (requires PyTorch & transformers):
 # Install with: pip install -r requirements.txt
 
-# Core AI/ML libraries
+# Core AI/ML libraries (Only needed for local model loading)
 transformers>=4.30.0
 torch>=2.0.0
 accelerate>=0.20.0
 
-# Optional but recommended
+# Optional but recommended for local GGUF/DirectML loading
 sentencepiece>=0.1.99
 tokenizers>=0.13.3
 gguf>=0.1.0
 torch-directml
 
-# CLI utilities
+# CLI utilities (optional)
 typer>=0.9.0
