@@ -1032,6 +1032,22 @@ class CLIInterface:
                         print(f"\n❌ Error starting game: {e}")
                     continue
                 
+                # Handle Web Search
+                if user_input.lower().startswith('/search'):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) > 1:
+                        query = parts[1].strip()
+                        try:
+                            from web_search import search_ddg, display_results, SearchSpinner
+                            with SearchSpinner(f"Searching web for: '{query}'..."):
+                                results = search_ddg(query)
+                            display_results(results, query)
+                        except Exception as e:
+                            print(f"\n❌ Error performing search: {e}\n")
+                    else:
+                        print(f"\n{self.theme['error']} Please provide a search query. Example: /search python news\n")
+                    continue
+                
                 if user_input.lower() in ['quit', 'exit', 'q']:
                     self.print_footer()
                     break
@@ -1102,6 +1118,22 @@ class CLIInterface:
                             play_sudoku_text(puzzle, solution)
                     except Exception as e:
                         print(f"\n❌ Error starting game: {e}")
+                    continue
+                
+                # Handle Web Search
+                if user_input.lower().startswith('/search'):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) > 1:
+                        query = parts[1].strip()
+                        try:
+                            from web_search import search_ddg, display_results, SearchSpinner
+                            with SearchSpinner(f"Searching web for: '{query}'..."):
+                                results = search_ddg(query)
+                            display_results(results, query)
+                        except Exception as e:
+                            print(f"\n❌ Error performing search: {e}\n")
+                    else:
+                        print(f"\n{self.theme['error']} Please provide a search query. Example: /search python news\n")
                     continue
                 
                 if user_input.lower() in ['quit', 'exit', 'q']:
