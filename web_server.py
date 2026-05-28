@@ -32,6 +32,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Logging middleware to debug and track all incoming requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    response = await call_next(request)
+    print(f"📥 Web Request: {request.method} {request.url.path} -> {response.status_code}")
+    return response
+
 # Fix Windows console UTF-8 issues
 import sys
 if sys.platform == 'win32':
