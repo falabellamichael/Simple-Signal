@@ -191,11 +191,11 @@ async function loadConfig() {
             themeSelector.value = config.theme;
             
             // Set backend state
-            const activeBackend = config.is_api ? 'api' : 'local';
+            const activeBackend = config.backend || (config.is_api ? 'api' : 'local');
             backendSelector.value = activeBackend;
             
             // Toggle model selector visibility based on backend
-            if (activeBackend === 'api') {
+            if (activeBackend === 'api' || activeBackend === 'llamacpp') {
                 modelSelectWrapper.style.display = 'flex';
             } else {
                 modelSelectWrapper.style.display = 'none';
@@ -226,8 +226,8 @@ async function loadModels() {
                     modelSelector.appendChild(opt);
                 });
                 
-                // Show model wrapper ONLY if backend is API
-                if (backendSelector.value === 'api') {
+                // Show model wrapper ONLY if backend is in API mode (LM Studio or llama.cpp)
+                if (backendSelector.value === 'api' || backendSelector.value === 'llamacpp') {
                     modelSelectWrapper.style.display = 'flex';
                 }
             } else {
@@ -271,6 +271,10 @@ async function handleBackendChange() {
         if (res.ok) {
             if (selectedBackend === 'api') {
                 appendSystemOutput(`Backend engine set to: LM Studio (API)`);
+                modelSelectWrapper.style.display = 'flex';
+                await loadModels();
+            } else if (selectedBackend === 'llamacpp') {
+                appendSystemOutput(`Backend engine set to: llama.cpp (API)`);
                 modelSelectWrapper.style.display = 'flex';
                 await loadModels();
             } else {

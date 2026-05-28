@@ -168,6 +168,34 @@ class SimpleSignalAI:
                 pass
         return None
 
+    def _check_llama_cpp(self) -> Optional[str]:
+        """Check if llama.cpp server is running locally on localhost or 127.0.0.1"""
+        import urllib.request
+        import urllib.error
+        
+        for host in ["localhost", "127.0.0.1"]:
+            # Query the health endpoint of llama-server (returns 200 or 401 if running)
+            test_url = f"http://{host}:8080/health"
+            url = f"http://{host}:8080/v1"
+            try:
+                req = urllib.request.Request(test_url)
+                with urllib.request.urlopen(req, timeout=1.0) as response:
+                    if response.status in [200, 204, 401]:
+                        return url
+            except urllib.error.HTTPError as e:
+                if e.code in [200, 204, 401]:
+                    return url
+            except Exception:
+                # Fallback: try root port
+                try:
+                    req = urllib.request.Request(f"http://{host}:8080/")
+                    with urllib.request.urlopen(req, timeout=1.0) as response:
+                        if response.status in [200, 401]:
+                            return url
+                except Exception:
+                    pass
+        return None
+
     def _call_api(self, messages: List[Dict[str, str]], max_tokens: Optional[int] = None) -> str:
         """Call the OpenAI-compatible API endpoint"""
         import urllib.request
@@ -213,13 +241,20 @@ class SimpleSignalAI:
             print(f"🌐 Connected to remote API: {self.api_url}\n")
             return True
 
-        # 2. Check if local LM Studio is running
+        # 2. Check if local LM Studio or llama.cpp is running
         if not self.force_local:
             lm_url = self._check_lm_studio()
             if lm_url:
                 self.is_api = True
                 self.api_url = lm_url
                 print(f"🌐 Connected via GPU acceleration to LM Studio: {self.api_url}\n")
+                return True
+                
+            llama_url = self._check_llama_cpp()
+            if llama_url:
+                self.is_api = True
+                self.api_url = llama_url
+                print(f"🌐 Connected via GPU acceleration to llama.cpp: {self.api_url}\n")
                 return True
 
         # 3. Fallback to local model loading via transformers
@@ -1329,11 +1364,12 @@ def show_backend_selector(ai):
     print("🔌 SELECT BACKEND ENGINE")
     print("=" * 60)
     print("  1. 🌐 LM Studio (Local API Server - GPU accelerated via Vulkan/DirectML)")
-    print("  2. 🐍 PyTorch (Transformers - Local Hugging Face Models)")
+    print("  2. 🦙 llama.cpp (Local API Server - default port 8080)")
+    print("  3. 🐍 PyTorch (Transformers - Local Hugging Face Models)")
     print("\n💡 Select a backend number, or press Enter to auto-detect.")
     
     try:
-        choice = input("Enter your choice [1-2]: ").strip()
+        choice = input("Enter your choice [1-3]: ").strip()
         if choice == "1":
             lm_url = ai._check_lm_studio()
             ai.force_local = False
@@ -1351,6 +1387,22 @@ def show_backend_selector(ai):
                 print(f"Fallback LM Studio active at default address (URL: {ai.api_url})")
                 return "api"
         elif choice == "2":
+            llama_url = ai._check_llama_cpp()
+            ai.force_local = False
+            if llama_url:
+                ai.is_api = True
+                ai.api_url = f"{llama_url}/chat/completions"
+                print(f"\n✅ llama.cpp Backend active (URL: {ai.api_url})")
+                return "llamacpp"
+            else:
+                print("\n⚠️  llama.cpp server not detected running on default ports.")
+                print("Make sure llama.cpp server is running!")
+                # Default fallback
+                ai.is_api = True
+                ai.api_url = "http://127.0.0.1:8080/v1/chat/completions"
+                print(f"Fallback llama.cpp active at default address (URL: {ai.api_url})")
+                return "llamacpp"
+        elif choice == "3":
             ai.is_api = False
             ai.force_local = True
             print("\n✅ PyTorch Local Transformers Backend active")
@@ -1364,11 +1416,19 @@ def show_backend_selector(ai):
                 ai.force_local = False
                 print(f"\n🔍 Auto-detected running LM Studio server. Using LM Studio API Backend.")
                 return "api"
-            else:
-                ai.is_api = False
-                ai.force_local = True
-                print(f"\n🔍 No LM Studio server detected. Defaulting to PyTorch Local Backend.")
-                return "local"
+            
+            llama_url = ai._check_llama_cpp()
+            if llama_url:
+                ai.is_api = True
+                ai.api_url = f"{llama_url}/chat/completions"
+                ai.force_local = False
+                print(f"\n🔍 Auto-detected running llama.cpp server. Using llama.cpp API Backend.")
+                return "llamacpp"
+                
+            ai.is_api = False
+            ai.force_local = True
+            print(f"\n🔍 No local API servers detected. Defaulting to PyTorch Local Backend.")
+            return "local"
     except KeyboardInterrupt:
         print("\n\n⚠️  Backend selection cancelled.")
         return None

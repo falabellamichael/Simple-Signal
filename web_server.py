@@ -496,10 +496,14 @@ def chat_endpoint(payload: ChatPayload):
 @app.get("/api/config")
 def get_config():
     """Retrieve settings and backend state"""
+    backend_val = "local"
+    if ai.is_api:
+        backend_val = "llamacpp" if ai.api_url and "8080" in ai.api_url else "api"
     return {
         "theme": ai.config.get("output", {}).get("theme", "dark"),
         "system_prompt": ai.config.get("chat", {}).get("system_prompt", "You are Simple Signal AI, a helpful local assistant."),
         "is_api": ai.is_api,
+        "backend": backend_val,
         "model_path": ai.model_path,
         "selected_model": ai.selected_model
     }
@@ -516,16 +520,27 @@ def update_config(data: ConfigUpdate):
 
 @app.get("/api/models")
 def get_models():
-    """Find models in local LM Studio"""
-    lm_url = ai._check_lm_studio()
-    if lm_url:
+    """Find models in local LM Studio or llama.cpp"""
+    # 1. Determine which URL to query based on active api_url
+    url_to_check = None
+    if ai.api_url:
+        parts = ai.api_url.split("/chat/completions")
+        if parts:
+            url_to_check = parts[0]
+            
+    # 2. Fallback to auto-detecting either if not set
+    if not url_to_check:
+        url_to_check = ai._check_lm_studio() or ai._check_llama_cpp()
+        
+    if url_to_check:
         try:
             import urllib.request
-            models_url = f"{lm_url}/models" if lm_url.endswith("/v1") else f"{lm_url}/v1/models"
+            models_url = f"{url_to_check}/models" if url_to_check.endswith("/v1") else f"{url_to_check}/v1/models"
             req = urllib.request.Request(models_url)
             
+            # Add API token if checking LM Studio (1234)
             api_token = os.environ.get("LM_API_TOKEN") or os.environ.get("SIGNAL_SHARE_LM_STUDIO_API_TOKEN")
-            if api_token:
+            if api_token and "1234" in url_to_check:
                 req.add_header("Authorization", f"Bearer {api_token}")
                 
             with urllib.request.urlopen(req, timeout=3.0) as response:
@@ -541,7 +556,7 @@ def get_models():
         except Exception as e:
             return {"connected": False, "models": [], "error": str(e)}
             
-    return {"connected": False, "models": [], "info": "LM Studio API not detected running locally."}
+    return {"connected": False, "models": [], "info": "No active API server detected running locally."}
 
 @app.get("/api/system/gpu")
 def get_gpu_info():
@@ -585,7 +600,8 @@ def select_model(data: ModelSelect):
 
 @app.post("/api/backend")
 def select_backend(data: BackendSelect):
-    """Switch between LM Studio (API) and PyTorch (Local) backend modes"""
+    """Switch between LM Studio (API), llama.cpp (API), and PyTorch (Local) backend modes"""
+    active_backend = data.backend
     if data.backend == "api":
         lm_url = ai._check_lm_studio()
         ai.is_api = True
@@ -594,6 +610,14 @@ def select_backend(data: BackendSelect):
             ai.api_url = f"{lm_url}/chat/completions"
         else:
             ai.api_url = "http://127.0.0.1:1234/v1/chat/completions"
+    elif data.backend == "llamacpp":
+        llama_url = ai._check_llama_cpp()
+        ai.is_api = True
+        ai.force_local = False
+        if llama_url:
+            ai.api_url = f"{llama_url}/chat/completions"
+        else:
+            ai.api_url = "http://127.0.0.1:8080/v1/chat/completions"
     elif data.backend == "local":
         ai.is_api = False
         ai.force_local = True
@@ -605,7 +629,7 @@ def select_backend(data: BackendSelect):
         
     return {
         "status": "success",
-        "backend": "api" if ai.is_api else "local",
+        "backend": active_backend,
         "is_api": ai.is_api,
         "force_local": ai.force_local,
         "has_local_model": ai.model is not None
