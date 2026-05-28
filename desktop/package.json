@@ -1,0 +1,60 @@
+{
+  "name": "simple-signal-desktop",
+  "version": "1.0.0",
+  "description": "Desktop wrapper for Simple Signal CLI & Web Client",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "telemetry",
+    "electron"
+  ],
+  "author": "falabellamichael",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^30.0.9",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.simplesignal.desktop",
+    "productName": "Simple Signal Desktop",
+    "publish": null,
+    "files": [
+      "main.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "app-backend",
+        "filter": [
+          "web_server.py",
+          "telemetry.py",
+          "ai_cli.py",
+          "web_search.py",
+          "config.json",
+          "requirements.txt",
+          "static/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Simple Signal Desktop"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}
