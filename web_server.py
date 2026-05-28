@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 # Import existing SimpleSignalAI capabilities
 from ai_cli import SimpleSignalAI, HAS_TRANSFORMERS
+from telemetry import get_gpu_info_data_sync, get_system_status as fetch_system_telemetry
 
 app = FastAPI(title="Simple Signal Web CLI")
 
@@ -69,90 +70,7 @@ class BackendSelect(BaseModel):
 class MetricsTogglePayload(BaseModel):
     enabled: bool
 
-def get_gpu_info_data_sync():
-    """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
-    gpu_list = []
-    
-    # 1. PyTorch CUDA
-    try:
-        import torch
-        if torch.cuda.is_available():
-            for i in range(torch.cuda.device_count()):
-                raw_name = torch.cuda.get_device_name(i)
-                clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
-                gpu_list.append({
-                    "name": clean_name,
-                    "backend": "CUDA (PyTorch)",
-                    "identifier": f"cuda:{i}",
-                    "status": "Available"
-                })
-    except Exception:
-        pass
 
-    # 2. PyTorch DirectML
-    try:
-        import torch_directml
-        for i in range(torch_directml.device_count()):
-            raw_name = torch_directml.device_name(i)
-            clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
-            gpu_list.append({
-                "name": clean_name,
-                "backend": "DirectML (PyTorch)",
-                "identifier": f"privateuseone:{i}",
-                "status": "Available"
-            })
-    except Exception:
-        pass
-        
-    # 3. Always query Windows controllers to find actual AMD/NVIDIA/Intel hardware name
-    try:
-        import subprocess
-        startupinfo = None
-        if os.name == 'nt':
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            
-        out = subprocess.check_output(
-            ["wmic", "path", "win32_VideoController", "get", "name"], 
-            text=True, 
-            startupinfo=startupinfo,
-            stderr=subprocess.DEVNULL
-        )
-        lines = [line.strip().replace('\x00', '').replace('\u0000', '').strip() for line in out.split("\n") if line.strip() and "Name" not in line]
-        
-        for name in lines:
-            if not name:
-                continue
-            # Deduplicate with already loaded ML backends
-            if any(name.lower() in g["name"].lower() or g["name"].lower() in name.lower() for g in gpu_list):
-                continue
-                
-            backend_compat = "Vulkan / DirectML"
-            if "nvidia" in name.lower():
-                backend_compat = "CUDA / Vulkan / DirectML"
-            elif "amd" in name.lower() or "radeon" in name.lower():
-                backend_compat = "Vulkan (LM Studio) / DirectML"
-            elif "intel" in name.lower():
-                backend_compat = "Vulkan / DirectML"
-                
-            gpu_list.append({
-                "name": name,
-                "backend": backend_compat,
-                "identifier": "Physical Card",
-                "status": "Detected"
-            })
-    except Exception:
-        pass
-        
-    if not gpu_list:
-        gpu_list.append({
-            "name": "Standard Display Adapter",
-            "backend": "CPU Fallback",
-            "identifier": "Default",
-            "status": "Active"
-        })
-        
-    return gpu_list
 
 # Global cache and control for system metrics to prevent blocking FastAPI request threads
 system_metrics_enabled = True
@@ -173,81 +91,13 @@ def update_system_status_loop():
             if not system_metrics_enabled:
                 time.sleep(1.0)
                 continue
-            # 1. CPU
-            cpu_percent = psutil.cpu_percent(interval=0.1)
             
-            # 2. Memory
-            mem = psutil.virtual_memory()
-            memory_data = {
-                "used": round(mem.used / (1024**3), 2),
-                "total": round(mem.total / (1024**3), 2),
-                "percentage": mem.percent
-            }
-            
-            # 3. Disk
-            try:
-                disk = psutil.disk_usage('/')
-                disk_data = {
-                    "used": round(disk.used / (1024**3), 2),
-                    "total": round(disk.total / (1024**3), 2),
-                    "percentage": disk.percent
-                }
-            except Exception:
-                disk_data = {
-                    "used": 0.0,
-                    "total": 0.0,
-                    "percentage": 0.0
-                }
-                
-            # 4. GPU
-            gpu_util = 0.0
-            gpu_name = "N/A"
-            
-            # Try using nvidia-smi first with a timeout
-            try:
-                startupinfo = None
-                if os.name == 'nt':
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                out = subprocess.check_output(
-                    ["nvidia-smi", "--query-gpu=utilization.gpu,name", "--format=csv,noheader,nounits"],
-                    text=True,
-                    startupinfo=startupinfo,
-                    stderr=subprocess.DEVNULL,
-                    timeout=1.0
-                )
-                parts = out.strip().split(',')
-                if len(parts) >= 2:
-                    gpu_util = float(parts[0].strip())
-                    gpu_name = parts[1].strip()
-            except Exception:
-                # Fallback to PowerShell counter with a timeout
-                try:
-                    startupinfo = None
-                    if os.name == 'nt':
-                        startupinfo = subprocess.STARTUPINFO()
-                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    cmd = "powershell -Command \"Get-Counter '\\GPU Engine(*)\\Utilization Percentage' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty CounterSamples | Measure-Object -Property CookedValue -Sum | Select-Object -ExpandProperty Sum\""
-                    out = subprocess.check_output(cmd, text=True, startupinfo=startupinfo, stderr=subprocess.DEVNULL, timeout=2.0)
-                    gpu_util = min(float(out.strip() or 0.0), 100.0)
-                    
-                    # Try to fetch GPU Name
-                    gpus = get_gpu_info_data_sync()
-                    if gpus:
-                        physical_gpu = next((g for g in gpus if g["identifier"] != "Default" and "CPU" not in g["backend"]), gpus[0])
-                        gpu_name = physical_gpu["name"]
-                except Exception:
-                    pass
+            # Fetch status via high-performance telemetry wrapper
+            status = fetch_system_telemetry()
             
             # Write safely to global cache
             with system_status_lock:
-                system_status_cache["cpu"] = {"percentage": cpu_percent}
-                system_status_cache["memory"] = memory_data
-                system_status_cache["disk"] = disk_data
-                system_status_cache["gpu"] = {
-                    "percentage": round(gpu_util, 1),
-                    "name": gpu_name
-                }
+                system_status_cache.update(status)
         except Exception:
             pass
         time.sleep(2.0)
