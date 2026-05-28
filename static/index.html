@@ -44,6 +44,12 @@
                     <span class="btn-icon">🔌</span>
                     <span class="btn-text">GPU Info</span>
                 </button>
+                <!-- Toggle System Sidebar -->
+                <button id="toggle-system-btn" class="header-action-btn" title="Toggle System Monitor Sidebar">
+                    <span class="btn-icon">📈</span>
+                    <span class="btn-text">System</span>
+                </button>
+
                 <!-- Backend Select -->
                 <div class="select-wrapper">
                     <label for="backend-selector">Engine:</label>
@@ -98,12 +104,12 @@
                         <span class="ascii-art">
    _____ _                 _          _____ _                   _ 
   / ____(_)               | |        / ____(_)                 | |
- | (___  _ _ __ ___  _ __ | | ___   | (___  _  __ _ _ __   __| |
-  \___ \| | '_ ` _ \| '_ \| |/ _ \   \___ \| |/ _` | '_ \ / _` |
-  ____) | | | | | | | |_) | |  __/   ____) | | (_| | | | | (_| |
- |_____/|_|_| |_| |_| .__/|_|\___|  |_____/|_|\__, |_| |_|\__,_|
-                    | |                         __/ |           
-                    |_|                        |___/            
+ | (___  _ _ __ ___  _ __ | | ___   | (___  _  __ _ _ __   __ _ | |
+  \___ \| | '_ ` _ \| '_ \| |/ _ \   \___ \| |/ _` | '_ \ / _` || |
+  ____) | | | | | | | |_) | |  __/   ____) | | (_| | | | | (_| || |
+ |_____/|_|_| |_| |_| .__/|_|\___|  |_____/|_|\__, |_| |_|\__,_||_|
+                    | |                         __/ |             
+                    |_|                        |___/              
                         </span>
                         <p>Welcome to <strong>Simple Signal CLI Web</strong>.</p>
                         <p>Type messages to chat with local AI. Write LaTeX formulas in standard math syntax (e.g. <code>$E = mc^2$</code> or <code>$$a^2 + b^2 = c^2$$</code>).</p>
@@ -133,6 +139,93 @@
                     </div>
                 </footer>
             </div>
+            
+            <!-- Collapsible Sidebar for System Status -->
+            <aside class="terminal-sidebar-right collapsed" id="terminal-sidebar-right">
+                <div class="sidebar-header">
+                    <span>📈 SYSTEM STATUS</span>
+                    <button id="close-system-btn" title="Hide Sidebar">&raquo;</button>
+                </div>
+                <div class="system-status-container">
+                    <!-- CPU Metric -->
+                    <div class="metric-section" id="cpu-section">
+                        <div class="metric-info">
+                            <span class="metric-name">CPU Usage</span>
+                            <span class="metric-value" id="cpu-val">0.0%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="cpu-progress" style="width: 0%;"></div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="cpu-chart" width="220" height="80"></canvas>
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label-row">
+                                <label for="cpu-poll-slider">Polling Rate: <span id="cpu-poll-lbl">1.0</span>s</label>
+                            </div>
+                            <input type="range" id="cpu-poll-slider" class="metric-slider" min="0.5" max="5.0" step="0.5" value="1.0">
+                        </div>
+                    </div>
+                    
+                    <!-- Memory Metric -->
+                    <div class="metric-section" id="mem-section">
+                        <div class="metric-info">
+                            <span class="metric-name">Memory</span>
+                            <span class="metric-value" id="mem-val">0 / 0 GB (0%)</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="mem-progress" style="width: 0%;"></div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="memory-chart" width="220" height="80"></canvas>
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label-row">
+                                <label for="mem-poll-slider">Polling Rate: <span id="mem-poll-lbl">1.0</span>s</label>
+                            </div>
+                            <input type="range" id="mem-poll-slider" class="metric-slider" min="0.5" max="5.0" step="0.5" value="1.0">
+                        </div>
+                    </div>
+
+                    <!-- GPU Metric -->
+                    <div class="metric-section" id="gpu-section">
+                        <div class="metric-info">
+                            <span class="metric-name">GPU Utilization</span>
+                            <span class="metric-value" id="gpu-val">0.0%</span>
+                        </div>
+                        <div class="gpu-model-name" id="gpu-model">N/A</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="gpu-progress" style="width: 0%;"></div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="gpu-chart" width="220" height="80"></canvas>
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label-row">
+                                <label for="gpu-poll-slider">Polling Rate: <span id="gpu-poll-lbl">1.0</span>s</label>
+                            </div>
+                            <input type="range" id="gpu-poll-slider" class="metric-slider" min="0.5" max="5.0" step="0.5" value="1.0">
+                        </div>
+                    </div>
+
+                    <!-- Storage Metric -->
+                    <div class="metric-section" id="storage-section">
+                        <div class="metric-info">
+                            <span class="metric-name">Disk Storage</span>
+                            <span class="metric-value" id="storage-val">0 / 0 GB (0%)</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="storage-progress" style="width: 0%;"></div>
+                        </div>
+                        <div class="slider-container">
+                            <div class="slider-label-row">
+                                <label for="storage-poll-slider">Polling Rate: <span id="storage-poll-lbl">3.0</span>s</label>
+                            </div>
+                            <input type="range" id="storage-poll-slider" class="metric-slider" min="1.0" max="10.0" step="1.0" value="3.0">
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
     

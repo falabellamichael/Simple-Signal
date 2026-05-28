@@ -148,19 +148,21 @@ class SimpleSignalAI:
         api_token = os.environ.get("LM_API_TOKEN") or os.environ.get("SIGNAL_SHARE_LM_STUDIO_API_TOKEN")
         
         for host in ["localhost", "127.0.0.1"]:
+            # Query the root port URL (always returns 200 or 401 if running)
+            # to avoid triggering the 'Unexpected endpoint' warning logs in LM Studio.
+            test_url = f"http://{host}:1234/"
             url = f"http://{host}:1234/v1"
             try:
-                # Ping LM Studio models endpoint with a 1.5s timeout
-                req = urllib.request.Request(f"{url}/models")
+                req = urllib.request.Request(test_url)
                 if api_token:
                     req.add_header("Authorization", f"Bearer {api_token}")
                 
                 with urllib.request.urlopen(req, timeout=1.5) as response:
-                    if response.status == 200:
+                    if response.status in [200, 401]:
                         return url
             except urllib.error.HTTPError as e:
-                if e.code == 401:
-                    # 401 means the server is running and active, but requires token
+                if e.code in [200, 401]:
+                    # 401 means running but requires token
                     return url
             except Exception:
                 pass

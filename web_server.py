@@ -9,6 +9,8 @@ import json
 import asyncio
 import threading
 import time
+import subprocess
+import psutil
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
@@ -142,6 +144,103 @@ def get_gpu_info_data_sync():
         
     return gpu_list
 
+# Global cache for system metrics to prevent blocking FastAPI request threads
+system_status_cache = {
+    "cpu": {"percentage": 0.0},
+    "memory": {"used": 0.0, "total": 0.0, "percentage": 0.0},
+    "disk": {"used": 0.0, "total": 0.0, "percentage": 0.0},
+    "gpu": {"percentage": 0.0, "name": "N/A"}
+}
+system_status_lock = threading.Lock()
+
+def update_system_status_loop():
+    """Background worker that periodically polls system metrics to avoid blocking request threads"""
+    # Wait a moment for server startup
+    time.sleep(1.0)
+    while True:
+        try:
+            # 1. CPU
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            
+            # 2. Memory
+            mem = psutil.virtual_memory()
+            memory_data = {
+                "used": round(mem.used / (1024**3), 2),
+                "total": round(mem.total / (1024**3), 2),
+                "percentage": mem.percent
+            }
+            
+            # 3. Disk
+            try:
+                disk = psutil.disk_usage('/')
+                disk_data = {
+                    "used": round(disk.used / (1024**3), 2),
+                    "total": round(disk.total / (1024**3), 2),
+                    "percentage": disk.percent
+                }
+            except Exception:
+                disk_data = {
+                    "used": 0.0,
+                    "total": 0.0,
+                    "percentage": 0.0
+                }
+                
+            # 4. GPU
+            gpu_util = 0.0
+            gpu_name = "N/A"
+            
+            # Try using nvidia-smi first with a timeout
+            try:
+                startupinfo = None
+                if os.name == 'nt':
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                out = subprocess.check_output(
+                    ["nvidia-smi", "--query-gpu=utilization.gpu,name", "--format=csv,noheader,nounits"],
+                    text=True,
+                    startupinfo=startupinfo,
+                    stderr=subprocess.DEVNULL,
+                    timeout=1.0
+                )
+                parts = out.strip().split(',')
+                if len(parts) >= 2:
+                    gpu_util = float(parts[0].strip())
+                    gpu_name = parts[1].strip()
+            except Exception:
+                # Fallback to PowerShell counter with a timeout
+                try:
+                    startupinfo = None
+                    if os.name == 'nt':
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    cmd = "powershell -Command \"Get-Counter '\\GPU Engine(*)\\Utilization Percentage' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty CounterSamples | Measure-Object -Property CookedValue -Sum | Select-Object -ExpandProperty Sum\""
+                    out = subprocess.check_output(cmd, text=True, startupinfo=startupinfo, stderr=subprocess.DEVNULL, timeout=2.0)
+                    gpu_util = min(float(out.strip() or 0.0), 100.0)
+                    
+                    # Try to fetch GPU Name
+                    gpus = get_gpu_info_data_sync()
+                    if gpus:
+                        physical_gpu = next((g for g in gpus if g["identifier"] != "Default" and "CPU" not in g["backend"]), gpus[0])
+                        gpu_name = physical_gpu["name"]
+                except Exception:
+                    pass
+            
+            # Write safely to global cache
+            with system_status_lock:
+                system_status_cache["cpu"] = {"percentage": cpu_percent}
+                system_status_cache["memory"] = memory_data
+                system_status_cache["disk"] = disk_data
+                system_status_cache["gpu"] = {
+                    "percentage": round(gpu_util, 1),
+                    "name": gpu_name
+                }
+        except Exception:
+            pass
+        time.sleep(2.0)
+
+# Start background metric monitoring thread
+threading.Thread(target=update_system_status_loop, daemon=True).start()
+
 def stream_gpu_table():
     """Format and stream GPU detection as an aligned ASCII text table"""
     yield "🔌 Querying system for graphics hardware details...\n\n"
@@ -227,6 +326,11 @@ def generate_chat_stream(messages: List[Dict[str, str]]):
     # 1. API Mode (e.g. LM Studio running)
     if ai.is_api:
         import requests
+        # Refresh API URL dynamically in case LM Studio was started after server launch
+        lm_url = ai._check_lm_studio()
+        if lm_url:
+            ai.api_url = f"{lm_url}/chat/completions"
+            
         url = ai.api_url
         if not url.endswith("/chat/completions"):
             url = f"{url}/chat/completions"
@@ -430,6 +534,13 @@ def get_gpu_info():
     """Endpoint exposing the raw GPU hardware list as JSON"""
     gpus = get_gpu_info_data_sync()
     return {"gpus": gpus}
+
+@app.get("/api/system/status")
+def get_system_status():
+    """Retrieve current system metrics from the background-populated cache"""
+    with system_status_lock:
+        return system_status_cache
+
 
 @app.post("/api/model")
 def select_model(data: ModelSelect):

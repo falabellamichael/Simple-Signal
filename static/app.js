@@ -7,6 +7,15 @@ let currentAbortController = null;
 let activeSessionId = null; // null means unsaved new session
 let sessions = []; // list of all saved sessions
 
+// System Monitor State
+let cpuHistory = [];
+let memHistory = [];
+let gpuHistory = [];
+let cpuIntervalId = null;
+let memIntervalId = null;
+let gpuIntervalId = null;
+let storageIntervalId = null;
+
 // DOM Elements
 const terminalContainer = document.querySelector('.terminal-container');
 const terminalScreen = document.getElementById('terminal-screen');
@@ -28,6 +37,12 @@ const sessionsList = document.getElementById('sessions-list');
 const toggleHistoryBtn = document.getElementById('toggle-history-btn');
 const closeSidebarBtn = document.getElementById('close-sidebar-btn');
 const gpuInfoBtn = document.getElementById('gpu-info-btn');
+
+// Right Sidebar (System Monitor) Elements
+const sidebarRight = document.getElementById('terminal-sidebar-right');
+const toggleSystemBtn = document.getElementById('toggle-system-btn');
+const closeSystemBtn = document.getElementById('close-system-btn');
+
 
 // Initialize Web UI
 document.addEventListener('DOMContentLoaded', async () => {
@@ -55,6 +70,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleHistoryBtn.addEventListener('click', toggleSidebar);
     closeSidebarBtn.addEventListener('click', collapseSidebar);
     
+    // Right Sidebar (System Monitor) toggle buttons
+    toggleSystemBtn.addEventListener('click', toggleSystemSidebar);
+    closeSystemBtn.addEventListener('click', collapseSystemSidebar);
+    
+    // Sliders for dynamic polling interval updates
+    document.getElementById('cpu-poll-slider').addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('cpu-poll-lbl').textContent = val.toFixed(1);
+        if (cpuIntervalId) {
+            clearInterval(cpuIntervalId);
+            cpuIntervalId = setInterval(pollCPU, val * 1000);
+        }
+    });
+
+    document.getElementById('mem-poll-slider').addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('mem-poll-lbl').textContent = val.toFixed(1);
+        if (memIntervalId) {
+            clearInterval(memIntervalId);
+            memIntervalId = setInterval(pollMemory, val * 1000);
+        }
+    });
+
+    document.getElementById('gpu-poll-slider').addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('gpu-poll-lbl').textContent = val.toFixed(1);
+        if (gpuIntervalId) {
+            clearInterval(gpuIntervalId);
+            gpuIntervalId = setInterval(pollGPU, val * 1000);
+        }
+    });
+
+    document.getElementById('storage-poll-slider').addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('storage-poll-lbl').textContent = val.toFixed(1);
+        if (storageIntervalId) {
+            clearInterval(storageIntervalId);
+            storageIntervalId = setInterval(pollStorage, val * 1000);
+        }
+    });
+
     // GPU Info button
     gpuInfoBtn.addEventListener('click', handleGpuQuery);
     
@@ -804,3 +860,220 @@ function handleGpuQuery() {
     chatInput.value = '/gpu';
     submitMessage();
 }
+
+/* ==========================================
+   SYSTEM MONITOR (RIGHT SIDEBAR) LOGIC
+   ========================================== */
+
+function toggleSystemSidebar() {
+    sidebarRight.classList.toggle('collapsed');
+    if (!sidebarRight.classList.contains('collapsed')) {
+        startPolling();
+    } else {
+        stopPolling();
+    }
+}
+
+function collapseSystemSidebar() {
+    sidebarRight.classList.add('collapsed');
+    stopPolling();
+}
+
+// Draw a rolling chart with glowing lines, gradients, and a leading edge dot
+function drawChart(canvas, history, color = '#82aaff') {
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw subtle grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < width; i += width / 5) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, height);
+        ctx.stroke();
+    }
+    for (let j = 0; j < height; j += height / 3) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(width, j);
+        ctx.stroke();
+    }
+    
+    if (history.length < 2) return;
+    
+    // Draw line
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    
+    const step = width / 19; // 20 max points, 19 segments
+    const maxVal = 100;
+    
+    // Map values to coordinates
+    const points = history.map((val, idx) => {
+        const offset = 20 - history.length;
+        const x = (idx + offset) * step;
+        const y = height - (val / maxVal) * (height - 8) - 4; // leave 4px padding top/bottom
+        return { x, y };
+    });
+    
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+    }
+    ctx.stroke();
+    
+    // Draw gradient area under the line
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    let rgbaColor = 'rgba(130, 170, 255, 0.15)';
+    if (color.startsWith('#')) {
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        rgbaColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
+    } else if (color.startsWith('rgb')) {
+        rgbaColor = color.replace('rgb', 'rgba').replace(')', ', 0.15)');
+    }
+    
+    gradient.addColorStop(0, rgbaColor);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    ctx.lineTo(points[points.length - 1].x, height);
+    ctx.lineTo(points[0].x, height);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // Draw last point pulsing dot
+    const lastPoint = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPoint.x, lastPoint.y, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = color;
+    ctx.fill();
+    ctx.shadowBlur = 0; // reset shadow
+}
+
+// Fetch current metrics and update UI
+async function pollCPU() {
+    try {
+        const res = await fetch('/api/system/status');
+        if (res.ok) {
+            const data = await res.json();
+            const cpuUsage = data.cpu.percentage;
+            
+            document.getElementById('cpu-val').textContent = `${cpuUsage.toFixed(1)}%`;
+            document.getElementById('cpu-progress').style.width = `${cpuUsage}%`;
+            
+            cpuHistory.push(cpuUsage);
+            if (cpuHistory.length > 20) cpuHistory.shift();
+            
+            const accentColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#82aaff';
+            drawChart(document.getElementById('cpu-chart'), cpuHistory, accentColor);
+        }
+    } catch (e) {
+        console.error('CPU polling error:', e);
+    }
+}
+
+async function pollMemory() {
+    try {
+        const res = await fetch('/api/system/status');
+        if (res.ok) {
+            const data = await res.json();
+            const mem = data.memory;
+            
+            document.getElementById('mem-val').textContent = `${mem.used} / ${mem.total} GB (${mem.percentage.toFixed(1)}%)`;
+            document.getElementById('mem-progress').style.width = `${mem.percentage}%`;
+            
+            memHistory.push(mem.percentage);
+            if (memHistory.length > 20) memHistory.shift();
+            
+            const accentColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#82aaff';
+            drawChart(document.getElementById('memory-chart'), memHistory, accentColor);
+        }
+    } catch (e) {
+        console.error('Memory polling error:', e);
+    }
+}
+
+async function pollGPU() {
+    try {
+        const res = await fetch('/api/system/status');
+        if (res.ok) {
+            const data = await res.json();
+            const gpu = data.gpu;
+            
+            document.getElementById('gpu-val').textContent = `${gpu.percentage.toFixed(1)}%`;
+            document.getElementById('gpu-model').textContent = gpu.name || 'N/A';
+            document.getElementById('gpu-progress').style.width = `${gpu.percentage}%`;
+            
+            gpuHistory.push(gpu.percentage);
+            if (gpuHistory.length > 20) gpuHistory.shift();
+            
+            const accentColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim() || '#82aaff';
+            drawChart(document.getElementById('gpu-chart'), gpuHistory, accentColor);
+        }
+    } catch (e) {
+        console.error('GPU polling error:', e);
+    }
+}
+
+async function pollStorage() {
+    try {
+        const res = await fetch('/api/system/status');
+        if (res.ok) {
+            const data = await res.json();
+            const disk = data.disk;
+            
+            document.getElementById('storage-val').textContent = `${disk.used} / ${disk.total} GB (${disk.percentage.toFixed(1)}%)`;
+            document.getElementById('storage-progress').style.width = `${disk.percentage}%`;
+        }
+    } catch (e) {
+        console.error('Storage polling error:', e);
+    }
+}
+
+function startPolling() {
+    stopPolling();
+    
+    // Initial request immediately
+    pollCPU();
+    pollMemory();
+    pollGPU();
+    pollStorage();
+    
+    // Read individual intervals
+    const cpuRate = parseFloat(document.getElementById('cpu-poll-slider').value) * 1000;
+    const memRate = parseFloat(document.getElementById('mem-poll-slider').value) * 1000;
+    const gpuRate = parseFloat(document.getElementById('gpu-poll-slider').value) * 1000;
+    const storageRate = parseFloat(document.getElementById('storage-poll-slider').value) * 1000;
+    
+    // Launch poll timers
+    cpuIntervalId = setInterval(pollCPU, cpuRate);
+    memIntervalId = setInterval(pollMemory, memRate);
+    gpuIntervalId = setInterval(pollGPU, gpuRate);
+    storageIntervalId = setInterval(pollStorage, storageRate);
+}
+
+function stopPolling() {
+    if (cpuIntervalId) clearInterval(cpuIntervalId);
+    if (memIntervalId) clearInterval(memIntervalId);
+    if (gpuIntervalId) clearInterval(gpuIntervalId);
+    if (storageIntervalId) clearInterval(storageIntervalId);
+    
+    cpuIntervalId = null;
+    memIntervalId = null;
+    gpuIntervalId = null;
+    storageIntervalId = null;
+}
+
