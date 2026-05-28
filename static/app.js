@@ -121,6 +121,48 @@ document.addEventListener('DOMContentLoaded', async () => {
             chatInput.focus();
         }
     });
+
+    // Disable Metrics Toggle Switch
+    const disableMetricsChk = document.getElementById('disable-metrics-chk');
+    
+    // Load initial disabled state
+    const isMetricsDisabled = localStorage.getItem('systemMonitorDisabled') === 'true';
+    disableMetricsChk.checked = isMetricsDisabled;
+    updateMetricsVisualState(isMetricsDisabled);
+    
+    // Sync initial state with backend
+    try {
+        fetch('/api/system/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: !isMetricsDisabled })
+        });
+    } catch (err) {}
+
+    disableMetricsChk.addEventListener('change', async (e) => {
+        const disabled = e.target.checked;
+        localStorage.setItem('systemMonitorDisabled', disabled ? 'true' : 'false');
+        
+        // Update visual states
+        updateMetricsVisualState(disabled);
+        
+        // Sync with backend
+        try {
+            await fetch('/api/system/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: !disabled })
+            });
+        } catch (err) {
+            console.error('Failed to sync toggle with backend:', err);
+        }
+        
+        if (disabled) {
+            stopPolling();
+        } else if (!sidebarRight.classList.contains('collapsed')) {
+            startPolling();
+        }
+    });
 });
 
 // Auto-resize input text area
@@ -1044,6 +1086,10 @@ async function pollStorage() {
 }
 
 function startPolling() {
+    // Do not poll if metrics are disabled
+    if (localStorage.getItem('systemMonitorDisabled') === 'true') {
+        return;
+    }
     stopPolling();
     
     // Initial request immediately
@@ -1075,5 +1121,21 @@ function stopPolling() {
     memIntervalId = null;
     gpuIntervalId = null;
     storageIntervalId = null;
+}
+
+function updateMetricsVisualState(disabled) {
+    const sections = ['cpu-section', 'mem-section', 'gpu-section', 'storage-section'];
+    sections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (disabled) {
+                el.style.opacity = '0.35';
+                el.style.pointerEvents = 'none';
+            } else {
+                el.style.opacity = '1.0';
+                el.style.pointerEvents = 'auto';
+            }
+        }
+    });
 }
 

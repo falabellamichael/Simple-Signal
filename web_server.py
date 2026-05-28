@@ -66,6 +66,9 @@ class ModelSelect(BaseModel):
 class BackendSelect(BaseModel):
     backend: str
 
+class MetricsTogglePayload(BaseModel):
+    enabled: bool
+
 def get_gpu_info_data_sync():
     """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
     gpu_list = []
@@ -151,7 +154,8 @@ def get_gpu_info_data_sync():
         
     return gpu_list
 
-# Global cache for system metrics to prevent blocking FastAPI request threads
+# Global cache and control for system metrics to prevent blocking FastAPI request threads
+system_metrics_enabled = True
 system_status_cache = {
     "cpu": {"percentage": 0.0},
     "memory": {"used": 0.0, "total": 0.0, "percentage": 0.0},
@@ -166,6 +170,9 @@ def update_system_status_loop():
     time.sleep(1.0)
     while True:
         try:
+            if not system_metrics_enabled:
+                time.sleep(1.0)
+                continue
             # 1. CPU
             cpu_percent = psutil.cpu_percent(interval=0.1)
             
@@ -547,6 +554,22 @@ def get_system_status():
     """Retrieve current system metrics from the background-populated cache"""
     with system_status_lock:
         return system_status_cache
+
+@app.post("/api/system/toggle")
+def toggle_system_metrics(payload: MetricsTogglePayload):
+    global system_metrics_enabled
+    system_metrics_enabled = payload.enabled
+    
+    # If disabled, zero out metrics to show they are inactive
+    if not system_metrics_enabled:
+        with system_status_lock:
+            system_status_cache["cpu"] = {"percentage": 0.0}
+            system_status_cache["memory"] = {"used": 0.0, "total": 0.0, "percentage": 0.0}
+            system_status_cache["disk"] = {"used": 0.0, "total": 0.0, "percentage": 0.0}
+            system_status_cache["gpu"] = {"percentage": 0.0, "name": "Disabled"}
+            
+    print(f"⚙️ System metrics tracking {'ENABLED' if system_metrics_enabled else 'DISABLED'}")
+    return {"status": "success", "system_metrics_enabled": system_metrics_enabled}
 
 
 @app.post("/api/model")
