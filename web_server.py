@@ -370,7 +370,7 @@ def generate_chat_stream(messages: List[Dict[str, str]]):
                 yield f"❌ API Error: Received status code {response.status_code}\n{response.text}"
                 return
                 
-            for line in response.iter_lines():
+            for line in response.iter_lines(chunk_size=1):
                 if line:
                     decoded_line = line.decode('utf-8')
                     if decoded_line.startswith("data: "):

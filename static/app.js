@@ -495,6 +495,11 @@ async function submitMessage() {
             
             assistantResponse += chunk;
             
+            // Calculate accurate token count estimation (4 chars per token, or 1.3 * words)
+            const wordCount = assistantResponse.trim().split(/\s+/).filter(w => w.length > 0).length;
+            const charCount = assistantResponse.length;
+            const estimatedTokens = Math.max(Math.round(charCount / 4), Math.round(wordCount * 1.3));
+            
             // Throttle MathJax rendering to keep streaming fast and smooth
             const now = Date.now();
             const shouldTypeset = (now - lastTypesetTime > TYPESET_THROTTLE_MS);
@@ -508,9 +513,9 @@ async function submitMessage() {
             // Show stats in real-time
             if (streamStartTime) {
                 const elapsed = (Date.now() - streamStartTime) / 1000;
-                const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+                const tokPerSec = elapsed > 0 ? (estimatedTokens / elapsed).toFixed(1) : 0;
                 statsEl.style.display = 'flex';
-                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount}</span>`;
+                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${estimatedTokens}</span>`;
             }
             
             scrollToBottom();
@@ -522,9 +527,12 @@ async function submitMessage() {
         // Update stats with final metrics
         if (streamStartTime) {
             const elapsed = (Date.now() - streamStartTime) / 1000;
-            const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+            const wordCount = assistantResponse.trim().split(/\s+/).filter(w => w.length > 0).length;
+            const charCount = assistantResponse.length;
+            const estimatedTokens = Math.max(Math.round(charCount / 4), Math.round(wordCount * 1.3));
+            const tokPerSec = elapsed > 0 ? (estimatedTokens / elapsed).toFixed(1) : 0;
             statsEl.style.display = 'flex';
-            statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount}</span>`;
+            statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${estimatedTokens}</span>`;
         }
         
         // Store full assistant reply
@@ -541,9 +549,12 @@ async function submitMessage() {
             
             if (streamStartTime) {
                 const elapsed = (Date.now() - streamStartTime) / 1000;
-                const tokPerSec = elapsed > 0 ? (chunkCount / elapsed).toFixed(1) : 0;
+                const wordCount = assistantResponse.trim().split(/\s+/).filter(w => w.length > 0).length;
+                const charCount = assistantResponse.length;
+                const estimatedTokens = Math.max(Math.round(charCount / 4), Math.round(wordCount * 1.3));
+                const tokPerSec = elapsed > 0 ? (estimatedTokens / elapsed).toFixed(1) : 0;
                 statsEl.style.display = 'flex';
-                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${chunkCount} (Interrupted)</span>`;
+                statsEl.innerHTML = `<span>⏳ Time: ${elapsed.toFixed(1)}s</span><span>⚡ Speed: ${tokPerSec} tok/s</span><span>🪙 Tokens: ${estimatedTokens} (Interrupted)</span>`;
             }
             
             // Store partial answer
