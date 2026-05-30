@@ -221,7 +221,20 @@ function createWindow() {
         { role: 'zoomIn' },
         { role: 'zoomOut' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Terminal',
+          click: () => {
+            const { exec } = require('child_process');
+            // Try to open PowerShell Core (pwsh) first, fallback to Windows PowerShell
+            exec('start pwsh', (err) => {
+              if (err) {
+                exec('start powershell');
+              }
+            });
+          }
+        }
       ]
     },
     {
