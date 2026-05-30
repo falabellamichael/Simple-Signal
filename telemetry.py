@@ -212,8 +212,8 @@ class SystemTelemetryCollector:
                         if not s:
                             break
                         path = "".join(s)
-                        # We sum utilization across active 3D engines
-                        if "engtype_3D" in path:
+                        # We sum utilization across active 3D and Compute/CUDA engines
+                        if "engtype_3D" in path or "engtype_Compute" in path or "engtype_Cuda" in path:
                             hCounter = PDH_HCOUNTER()
                             if self.pdh.PdhAddCounterW(self.hQuery, path, 0, byref(hCounter)) == 0:
                                 self.counters.append(hCounter)
