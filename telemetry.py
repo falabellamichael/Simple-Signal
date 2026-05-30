@@ -138,6 +138,10 @@ class SystemTelemetryCollector:
                 self.pdh = None
                 
         self._detect_gpu_name()
+        try:
+            psutil.cpu_percent(interval=None)
+        except:
+            pass
 
     def _setup_pdh_functions(self):
         self.pdh.PdhOpenQueryW.argtypes = [ctypes.c_wchar_p, ctypes.c_void_p, ctypes.POINTER(PDH_HQUERY)]
@@ -299,7 +303,7 @@ class SystemTelemetryCollector:
         """Returns unified system metrics"""
         # 1. CPU
         try:
-            cpu_percent = psutil.cpu_percent(interval=0.05)
+            cpu_percent = psutil.cpu_percent(interval=None)
         except Exception as e:
             print(f"⚠️ TELEMETRY ERROR CPU: {e}")
             cpu_percent = 0.0

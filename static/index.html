@@ -21,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
     
     <!-- Custom styling -->
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body data-theme="dark">
     <div class="terminal-container">
@@ -90,6 +90,9 @@
                 <div class="sidebar-header">
                     <span>📁 HISTORY</span>
                     <button id="close-sidebar-btn" title="Hide Sidebar">&laquo;</button>
+                </div>
+                <div class="sidebar-actions">
+                    <button id="new-chat-btn" title="Start a new session">➕ New Chat</button>
                 </div>
                 <div class="sessions-list" id="sessions-list">
                     <!-- Populated dynamically by app.js -->
@@ -242,6 +245,6 @@
     </div>
     
     <!-- Script application -->
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
 </body>
 </html>

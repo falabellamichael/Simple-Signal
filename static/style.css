@@ -176,6 +176,27 @@ body {
     box-shadow: none;
 }
 
+/* MINIMIZED STYLING (FLOATING WINDOW) */
+.terminal-container.minimized {
+    position: absolute;
+    width: 450px;
+    height: 350px;
+    bottom: 20px;
+    right: 20px;
+    resize: both;
+    z-index: 1000;
+    transition: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+.terminal-container.minimized .terminal-header {
+    cursor: grab;
+}
+
+.terminal-container.minimized .terminal-header:active {
+    cursor: grabbing;
+}
+
 /* HEADER WITH WINDOW CONTROLS AND ACTIONS */
 .terminal-header {
     background-color: var(--header-bg);
@@ -582,6 +603,29 @@ body {
 }
 
 #close-sidebar-btn:hover {
+    color: var(--accent-color);
+}
+
+.sidebar-actions {
+    padding: 10px 8px 0;
+}
+
+#new-chat-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px dashed var(--text-muted);
+    color: var(--text-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Fira Code', Consolas, Monaco, monospace;
+    font-size: 0.8rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#new-chat-btn:hover {
+    background-color: var(--input-focus-bg);
+    border-color: var(--accent-color);
     color: var(--accent-color);
 }
 

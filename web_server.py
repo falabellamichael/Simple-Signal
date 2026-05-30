@@ -51,8 +51,15 @@ if sys.platform == 'win32':
 
 # Initialize SimpleSignalAI instance
 ai = SimpleSignalAI()
-# Trigger model detection/loading
-model_loaded = ai.load_model()
+
+@app.on_event("startup")
+def startup_event():
+    # Trigger model detection/loading asynchronously or in background to prevent blocking
+    import threading
+    def load():
+        global model_loaded
+        model_loaded = ai.load_model()
+    threading.Thread(target=load, daemon=True).start()
 
 class ChatPayload(BaseModel):
     messages: List[Dict[str, str]]
@@ -100,7 +107,7 @@ def update_system_status_loop():
                 system_status_cache.update(status)
         except Exception:
             pass
-        time.sleep(2.0)
+        time.sleep(0.5)
 
 # Start background metric monitoring thread
 threading.Thread(target=update_system_status_loop, daemon=True).start()
@@ -499,4 +506,4 @@ if __name__ == "__main__":
     print("🚀 Simple Signal Web CLI is starting up...")
     print("👉 Open your browser at: http://localhost:8000")
     print("=" * 60 + "\n")
-    uvicorn.run("web_server:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("web_server:app", host="127.0.0.1", port=8000, reload=False)

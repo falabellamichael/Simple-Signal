@@ -66,6 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     winMinimizeBtn.addEventListener('click', handleWindowMinimize);
     winMaximizeBtn.addEventListener('click', handleWindowMaximize);
     
+    // New Chat button
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', handleNewChat);
+    }
+    
     // Sidebar toggle buttons
     toggleHistoryBtn.addEventListener('click', toggleSidebar);
     closeSidebarBtn.addEventListener('click', collapseSidebar);
@@ -860,8 +866,69 @@ function handleWindowClose() {
     chatInput.focus();
 }
 
-// 2. Minimize Button (Yellow): Archives current chat into history list and starts new chat
+// Draggable window logic
+const terminalHeader = document.querySelector('.terminal-header');
+let isDragging = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+terminalHeader.addEventListener('mousedown', (e) => {
+    // Only drag if left click and window is minimized
+    if (e.button !== 0 || !terminalContainer.classList.contains('minimized')) return;
+    
+    // Don't drag if clicking on a control button
+    if (e.target.closest('.window-controls') || e.target.closest('.terminal-actions')) return;
+
+    isDragging = true;
+    dragOffsetX = e.clientX - terminalContainer.getBoundingClientRect().left;
+    dragOffsetY = e.clientY - terminalContainer.getBoundingClientRect().top;
+    
+    // Prevent text selection while dragging
+    e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging || !terminalContainer.classList.contains('minimized')) return;
+    
+    // Calculate new position
+    let newX = e.clientX - dragOffsetX;
+    let newY = e.clientY - dragOffsetY;
+    
+    // Boundary checks (prevent dragging completely off-screen)
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 50;
+    
+    newX = Math.max(-terminalContainer.offsetWidth + 100, Math.min(newX, maxX));
+    newY = Math.max(0, Math.min(newY, maxY));
+    
+    // Apply new position
+    terminalContainer.style.left = `${newX}px`;
+    terminalContainer.style.top = `${newY}px`;
+    terminalContainer.style.bottom = 'auto'; // Disable default positioning
+    terminalContainer.style.right = 'auto'; // Disable default positioning
+});
+
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+// 2. Minimize Button (Yellow): Toggles floating window mode
 function handleWindowMinimize() {
+    terminalContainer.classList.toggle('minimized');
+    if (terminalContainer.classList.contains('minimized')) {
+        terminalContainer.classList.remove('fullscreen');
+    } else {
+        // Reset positioning when returning to normal size
+        terminalContainer.style.left = '';
+        terminalContainer.style.top = '';
+        terminalContainer.style.bottom = '';
+        terminalContainer.style.right = '';
+    }
+    setTimeout(scrollToBottom, 150);
+}
+
+// 2b. New Chat Button: Archives current chat into history list and starts new chat
+function handleNewChat() {
     if (isStreaming) {
         stopStreaming();
     }
