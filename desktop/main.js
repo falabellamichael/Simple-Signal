@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const http = require('http');
@@ -178,9 +178,11 @@ function createWindow() {
     title: 'Simple Signal AI Console',
     backgroundColor: '#0a0b10', // Cyberpunk neon dark background color
     icon: path.join(__dirname, 'icon.png'), // Will fallback gracefully if missing
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
@@ -191,6 +193,19 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+ipcMain.on('window-control', (event, action) => {
+  if (!mainWindow) return;
+  if (action === 'close') mainWindow.close();
+  if (action === 'minimize') mainWindow.minimize();
+  if (action === 'maximize') {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
 
 // Electron lifecycle event handlers
 app.on('ready', async () => {

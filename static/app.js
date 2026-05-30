@@ -837,6 +837,11 @@ function startNewChatSession() {
 
 // 1. Exit Button (Red): Starts a new chat and deletes/clears it from history
 function handleWindowClose() {
+    if (window.electronAPI) {
+        window.electronAPI.windowControl('close');
+        return;
+    }
+
     if (isStreaming) {
         stopStreaming();
     }
@@ -914,6 +919,11 @@ document.addEventListener('mouseup', () => {
 
 // 2. Minimize Button (Yellow): Toggles floating window mode
 function handleWindowMinimize() {
+    if (window.electronAPI) {
+        window.electronAPI.windowControl('minimize');
+        return;
+    }
+
     terminalContainer.classList.toggle('minimized');
     if (terminalContainer.classList.contains('minimized')) {
         terminalContainer.classList.remove('fullscreen');
@@ -955,6 +965,11 @@ function handleNewChat() {
 
 // 3. Widen Button (Green): Toggles Fullscreen window scaling
 function handleWindowMaximize() {
+    if (window.electronAPI) {
+        window.electronAPI.windowControl('maximize');
+        return;
+    }
+
     terminalContainer.classList.toggle('fullscreen');
     
     // Adjust layout scroll position slightly after resizing

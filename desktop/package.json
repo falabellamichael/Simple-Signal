@@ -1,6 +1,6 @@
 {
   "name": "simple-signal-desktop",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Desktop wrapper for Simple Signal CLI & Web Client",
   "main": "main.js",
   "scripts": {
@@ -26,7 +26,8 @@
     "productName": "Simple Signal Desktop",
     "publish": null,
     "files": [
-      "main.js"
+      "main.js",
+      "preload.js"
     ],
     "extraResources": [
       {
