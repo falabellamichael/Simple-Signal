@@ -494,7 +494,10 @@ def select_backend(data: BackendSelect):
 
 # Ensure extensions directory exists
 extensions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extensions")
-os.makedirs(extensions_dir, exist_ok=True)
+try:
+    os.makedirs(extensions_dir, exist_ok=True)
+except Exception:
+    pass
 
 @app.get("/api/extensions")
 def list_extensions():
@@ -519,7 +522,10 @@ def list_extensions():
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/extensions", StaticFiles(directory="extensions"), name="extensions")
+
+if os.path.exists(extensions_dir):
+    app.mount("/extensions", StaticFiles(directory="extensions"), name="extensions")
+
 
 # Root endpoint serves index.html
 @app.get("/")
