@@ -27,7 +27,8 @@
     "publish": null,
     "files": [
       "main.js",
-      "preload.js"
+      "preload.js",
+      "preload_extension.js"
     ],
     "extraResources": [
       {
