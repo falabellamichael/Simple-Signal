@@ -234,6 +234,14 @@ function createWindow() {
               }
             });
           }
+        },
+        {
+          label: 'Token Authentication',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('open-token-modal');
+            }
+          }
         }
       ]
     },

@@ -248,7 +248,7 @@
     <div id="extensions-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🧩 Installed Extensions</h2>
+                <h2>🚀 Installed Extensions</h2>
                 <button id="close-extensions-btn" class="modal-close">&times;</button>
             </div>
             <div class="modal-body" id="extensions-list">
@@ -257,6 +257,27 @@
             </div>
             <div class="modal-footer">
                 <p class="modal-help-text">To install new extensions, drop the app folder into the Simple Signal <code>extensions/</code> directory and restart.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Authentication Modal -->
+    <div id="token-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>🔑 Token Authentication</h2>
+                <button id="close-token-btn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-top:0; margin-bottom:15px; color: var(--text-muted);">
+                    Enter your LM Studio API token. This will be sent as a Bearer token with requests. Leave blank to clear.
+                </p>
+                <div class="input-group">
+                    <input type="password" id="token-input" placeholder="lm-studio-token..." style="width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px;" />
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+                    <button id="save-token-btn" class="action-btn primary" style="padding: 8px 16px; cursor: pointer;">Save Token</button>
+                </div>
             </div>
         </div>
     </div>

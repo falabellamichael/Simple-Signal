@@ -1341,3 +1341,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+/* ==========================================
+   TOKEN MODAL LOGIC
+   ========================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+    const tokenModal = document.getElementById('token-modal');
+    const closeTokenBtn = document.getElementById('close-token-btn');
+    const saveTokenBtn = document.getElementById('save-token-btn');
+    const tokenInput = document.getElementById('token-input');
+
+    // Sync token with backend on startup
+    const savedToken = localStorage.getItem('lm_api_token');
+    if (savedToken) {
+        syncTokenToBackend(savedToken);
+    }
+
+    if (closeTokenBtn) {
+        closeTokenBtn.addEventListener('click', () => {
+            tokenModal.classList.add('hidden');
+        });
+    }
+
+    // Close when clicking outside modal content
+    if (tokenModal) {
+        tokenModal.addEventListener('click', (e) => {
+            if (e.target === tokenModal) {
+                tokenModal.classList.add('hidden');
+            }
+        });
+    }
+
+    if (saveTokenBtn && tokenInput) {
+        saveTokenBtn.addEventListener('click', async () => {
+            const token = tokenInput.value.trim();
+            if (token) {
+                localStorage.setItem('lm_api_token', token);
+            } else {
+                localStorage.removeItem('lm_api_token');
+            }
+            await syncTokenToBackend(token);
+            tokenModal.classList.add('hidden');
+            alert('Token saved successfully!');
+        });
+    }
+
+    async function syncTokenToBackend(token) {
+        try {
+            await fetch('/api/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token || '' })
+            });
+        } catch (e) {
+            console.error('Failed to sync token to backend', e);
+        }
+    }
+
+    // Listen for IPC event from native menu (Electron)
+    if (window.electronAPI && window.electronAPI.onOpenTokenModal) {
+        window.electronAPI.onOpenTokenModal(() => {
+            if (tokenInput) {
+                tokenInput.value = localStorage.getItem('lm_api_token') || '';
+            }
+            if (tokenModal) {
+                tokenModal.classList.remove('hidden');
+            }
+        });
+    }
+});
+
+

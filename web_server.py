@@ -350,6 +350,23 @@ def chat_endpoint(payload: ChatPayload):
         media_type="text/plain; charset=utf-8"
     )
 
+class TokenRequest(BaseModel):
+    token: str
+
+@app.post("/api/token")
+def set_token(request: TokenRequest):
+    """Set the API token for LM Studio."""
+    if request.token:
+        os.environ["LM_API_TOKEN"] = request.token
+        os.environ["SIGNAL_SHARE_LM_STUDIO_API_TOKEN"] = request.token
+    else:
+        # Clear token if empty
+        if "LM_API_TOKEN" in os.environ:
+            del os.environ["LM_API_TOKEN"]
+        if "SIGNAL_SHARE_LM_STUDIO_API_TOKEN" in os.environ:
+            del os.environ["SIGNAL_SHARE_LM_STUDIO_API_TOKEN"]
+    return {"status": "success"}
+
 @app.get("/api/config")
 def get_config():
     """Retrieve settings and backend state"""
