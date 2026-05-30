@@ -62,9 +62,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelSelector.addEventListener('change', handleModelChange);
     
     // Window control buttons listeners
-    winCloseBtn.addEventListener('click', handleWindowClose);
-    winMinimizeBtn.addEventListener('click', handleWindowMinimize);
-    winMaximizeBtn.addEventListener('click', handleWindowMaximize);
+    if (winCloseBtn) winCloseBtn.addEventListener('click', handleWindowClose);
+    if (winMinimizeBtn) winMinimizeBtn.addEventListener('click', handleWindowMinimize);
+    if (winMaximizeBtn) winMaximizeBtn.addEventListener('click', handleWindowMaximize);
     
     // New Chat button
     const newChatBtn = document.getElementById('new-chat-btn');
@@ -1257,6 +1257,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeExtensionsBtn) {
         closeExtensionsBtn.addEventListener('click', () => {
             extensionsModal.classList.add('hidden');
+        });
+    }
+
+    // Listen for IPC event from native menu (Electron)
+    if (window.electronAPI && window.electronAPI.onOpenExtensionsModal) {
+        window.electronAPI.onOpenExtensionsModal(async () => {
+            extensionsModal.classList.remove('hidden');
+            await loadExtensions();
         });
     }
 

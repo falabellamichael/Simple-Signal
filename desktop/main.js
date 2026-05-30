@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const http = require('http');
@@ -178,7 +178,6 @@ function createWindow() {
     title: 'Simple Signal AI Console',
     backgroundColor: '#0a0b10', // Cyberpunk neon dark background color
     icon: path.join(__dirname, 'icon.png'), // Will fallback gracefully if missing
-    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -188,6 +187,54 @@ function createWindow() {
 
   // Load backend web URL
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
+
+  // Create native menu
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Extensions',
+      submenu: [
+        {
+          label: 'Manage Extensions...',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('open-extensions-modal');
+            }
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
