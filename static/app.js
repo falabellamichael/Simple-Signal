@@ -462,6 +462,15 @@ async function submitMessage() {
     const contentText = aiEntry.querySelector('.message-content-text');
     const statsEl = aiEntry.querySelector('.generation-stats');
     
+    // Start Thinking... spinner
+    const spinnerFrames = ['|', '/', '-', '\\'];
+    let spinnerIdx = 0;
+    contentText.innerHTML = `<span class="thinking-text" style="color: var(--text-muted); font-family: var(--font-mono);">Thinking... ${spinnerFrames[spinnerIdx]}</span>`;
+    const spinnerInterval = setInterval(() => {
+        spinnerIdx = (spinnerIdx + 1) % spinnerFrames.length;
+        contentText.innerHTML = `<span class="thinking-text" style="color: var(--text-muted); font-family: var(--font-mono);">Thinking... ${spinnerFrames[spinnerIdx]}</span>`;
+    }, 100);
+    
     // Toggle action button to streaming status
     isStreaming = true;
     actionBtn.classList.add('streaming');
@@ -497,6 +506,7 @@ async function submitMessage() {
             const chunk = decoder.decode(value, { stream: true });
             
             if (!streamStartTime && chunk.trim()) {
+                clearInterval(spinnerInterval);
                 streamStartTime = Date.now();
             }
             if (chunk.trim()) {
@@ -580,6 +590,7 @@ async function submitMessage() {
             contentText.appendChild(errorBlock);
         }
     } finally {
+        clearInterval(spinnerInterval);
         isStreaming = false;
         currentAbortController = null;
         actionBtn.classList.remove('streaming');
