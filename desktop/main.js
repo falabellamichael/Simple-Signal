@@ -197,6 +197,20 @@ function createWindow() {
       ]
     },
     {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'delete' },
+        { type: 'separator' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
       label: 'View',
       submenu: [
         { role: 'reload' },
@@ -227,6 +241,18 @@ function createWindow() {
             if (mainWindow) {
               mainWindow.webContents.send('open-extensions-modal');
             }
+          }
+        }
+      ]
+    },
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'Learn More',
+          click: async () => {
+            const { shell } = require('electron')
+            await shell.openExternal('https://github.com/falabellamichael/Simple-Signal')
           }
         }
       ]
