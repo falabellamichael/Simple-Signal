@@ -1236,3 +1236,100 @@ function updateMetricsVisualState(disabled) {
     });
 }
 
+
+/* ==========================================
+   EXTENSIONS MODAL LOGIC
+   ========================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleExtensionsBtn = document.getElementById('toggle-extensions-btn');
+    const extensionsModal = document.getElementById('extensions-modal');
+    const closeExtensionsBtn = document.getElementById('close-extensions-btn');
+    const extensionsList = document.getElementById('extensions-list');
+
+    if (toggleExtensionsBtn) {
+        toggleExtensionsBtn.addEventListener('click', async () => {
+            extensionsModal.classList.remove('hidden');
+            await loadExtensions();
+        });
+    }
+
+    if (closeExtensionsBtn) {
+        closeExtensionsBtn.addEventListener('click', () => {
+            extensionsModal.classList.add('hidden');
+        });
+    }
+
+    // Close when clicking outside modal content
+    if (extensionsModal) {
+        extensionsModal.addEventListener('click', (e) => {
+            if (e.target === extensionsModal) {
+                extensionsModal.classList.add('hidden');
+            }
+        });
+    }
+
+    async function loadExtensions() {
+        if (!extensionsList) return;
+        extensionsList.innerHTML = '<p>Loading extensions...</p>';
+        try {
+            const res = await fetch('/api/extensions');
+            if (!res.ok) throw new Error('Failed to fetch extensions');
+            const data = await res.json();
+            
+            extensionsList.innerHTML = '';
+            if (!data.extensions || data.extensions.length === 0) {
+                extensionsList.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No extensions found. Drop an extension folder into the <code>extensions/</code> directory.</p>';
+                return;
+            }
+
+            data.extensions.forEach(ext => {
+                const item = document.createElement('div');
+                item.className = 'extension-item';
+                
+                const info = document.createElement('div');
+                info.className = 'extension-info';
+                
+                const title = document.createElement('h3');
+                title.textContent = ext.name || ext.id;
+                
+                const desc = document.createElement('p');
+                desc.textContent = ext.description || 'No description provided.';
+                
+                info.appendChild(title);
+                info.appendChild(desc);
+                
+                const actionDiv = document.createElement('div');
+                const launchBtn = document.createElement('button');
+                launchBtn.className = 'extension-launch-btn';
+                launchBtn.textContent = 'Launch';
+                
+                launchBtn.addEventListener('click', () => {
+                    if (window.electronAPI && window.electronAPI.openExtension) {
+                        window.electronAPI.openExtension(
+                            ext.url,
+                            ext.name || ext.id,
+                            ext.width || 1024,
+                            ext.height || 768
+                        );
+                        // Optionally close modal
+                        extensionsModal.classList.add('hidden');
+                    } else {
+                        // Fallback for browser (non-Electron)
+                        window.open(ext.url, '_blank', `width=${ext.width||1024},height=${ext.height||768}`);
+                    }
+                });
+                
+                actionDiv.appendChild(launchBtn);
+                item.appendChild(info);
+                item.appendChild(actionDiv);
+                
+                extensionsList.appendChild(item);
+            });
+
+        } catch (e) {
+            console.error(e);
+            extensionsList.innerHTML = '<p style="color: #ff5f56;">Error loading extensions.</p>';
+        }
+    }
+});

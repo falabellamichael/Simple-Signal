@@ -207,6 +207,24 @@ ipcMain.on('window-control', (event, action) => {
   }
 });
 
+// IPC Handler to open extensions in new windows
+ipcMain.on('open-extension', (event, { url, title, width, height }) => {
+  const extWindow = new BrowserWindow({
+    width: width || 1024,
+    height: height || 768,
+    title: title || 'Extension',
+    backgroundColor: '#0a0b10', // Consistent dark background
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload_extension.js')
+    }
+  });
+
+  extWindow.loadURL(url);
+});
+
 // Electron lifecycle event handlers
 app.on('ready', async () => {
   const pythonCmd = await getPythonCommand();

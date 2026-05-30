@@ -1,6 +1,6 @@
 {
   "name": "simple-signal-desktop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Desktop wrapper for Simple Signal CLI & Web Client",
   "main": "main.js",
   "scripts": {
@@ -52,7 +52,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Simple Signal Desktop"
+      "shortcutName": "Simple Signal Desktop",
+      "artifactName": "SimpleSignal.exe"
     },
     "directories": {
       "output": "dist"

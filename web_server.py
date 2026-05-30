@@ -492,8 +492,34 @@ def select_backend(data: BackendSelect):
         "has_local_model": ai.model is not None
     }
 
+# Ensure extensions directory exists
+extensions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extensions")
+os.makedirs(extensions_dir, exist_ok=True)
+
+@app.get("/api/extensions")
+def list_extensions():
+    """Scan the extensions directory for valid apps and return their manifests."""
+    extensions = []
+    if os.path.exists(extensions_dir):
+        for ext_folder in os.listdir(extensions_dir):
+            ext_path = os.path.join(extensions_dir, ext_folder)
+            manifest_path = os.path.join(ext_path, "manifest.json")
+            if os.path.isdir(ext_path) and os.path.exists(manifest_path):
+                try:
+                    with open(manifest_path, "r", encoding="utf-8-sig") as f:
+                        manifest = json.load(f)
+                        # Inject identifier and default internal URL
+                        manifest["id"] = ext_folder
+                        if "url" not in manifest:
+                            manifest["url"] = f"http://127.0.0.1:8000/extensions/{ext_folder}/index.html"
+                        extensions.append(manifest)
+                except Exception as e:
+                    print(f"Error loading extension {ext_folder}: {e}")
+    return {"extensions": extensions}
+
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/extensions", StaticFiles(directory="extensions"), name="extensions")
 
 # Root endpoint serves index.html
 @app.get("/")

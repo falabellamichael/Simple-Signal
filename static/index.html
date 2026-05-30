@@ -39,6 +39,11 @@
                     <span class="btn-icon">📁</span>
                     <span class="btn-text">Sessions</span>
                 </button>
+                <!-- Extensions Modal Toggle -->
+                <button id="toggle-extensions-btn" class="header-action-btn" title="Manage Extensions">
+                    <span class="btn-icon">🧩</span>
+                    <span class="btn-text">Extensions</span>
+                </button>
                 <!-- Query GPU Info -->
                 <button id="gpu-info-btn" class="header-action-btn" title="Display GPU hardware details">
                     <span class="btn-icon">🔌</span>
@@ -241,6 +246,23 @@
                     </div>
                 </div>
             </aside>
+        </div>
+    </div>
+    
+    <!-- Extensions Modal -->
+    <div id="extensions-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🧩 Installed Extensions</h2>
+                <button id="close-extensions-btn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="extensions-list">
+                <!-- Extensions populated by app.js -->
+                <p>Loading extensions...</p>
+            </div>
+            <div class="modal-footer">
+                <p class="modal-help-text">To install new extensions, drop the app folder into the Simple Signal <code>extensions/</code> directory and restart.</p>
+            </div>
         </div>
     </div>
     
