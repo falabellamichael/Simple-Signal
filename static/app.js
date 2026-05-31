@@ -848,11 +848,6 @@ function startNewChatSession() {
 
 // 1. Exit Button (Red): Starts a new chat and deletes/clears it from history
 function handleWindowClose() {
-    if (window.electronAPI) {
-        window.electronAPI.windowControl('close');
-        return;
-    }
-
     if (isStreaming) {
         stopStreaming();
     }
@@ -928,24 +923,9 @@ document.addEventListener('mouseup', () => {
     isDragging = false;
 });
 
-// 2. Minimize Button (Yellow): Toggles floating window mode
+// 2. Minimize Button (Yellow): Archives current chat and starts new chat
 function handleWindowMinimize() {
-    if (window.electronAPI) {
-        window.electronAPI.windowControl('minimize');
-        return;
-    }
-
-    terminalContainer.classList.toggle('minimized');
-    if (terminalContainer.classList.contains('minimized')) {
-        terminalContainer.classList.remove('fullscreen');
-    } else {
-        // Reset positioning when returning to normal size
-        terminalContainer.style.left = '';
-        terminalContainer.style.top = '';
-        terminalContainer.style.bottom = '';
-        terminalContainer.style.right = '';
-    }
-    setTimeout(scrollToBottom, 150);
+    handleNewChat();
 }
 
 // 2b. New Chat Button: Archives current chat into history list and starts new chat
