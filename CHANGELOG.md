@@ -25,3 +25,8 @@ This is the first official release of the **Simple Signal CLI & Web Interface**.
 - ðŸ“Š **Collapsible Neon System Monitor** - Right sidebar charts displaying real-time CPU, Memory, Disk, and GPU stats with a customizable polling rate and a "Disable System Monitor" switch.
 - âš¡ **High-Performance Telemetry Wrapper** - Custom Windows `ctypes` wrapper for the native Performance Data Helper (`pdh.dll`) API, retrieving real-time GPU engine utilization in under 10ms with zero subprocess spawning overhead.
 - ðŸ”Œ **Multiple Local API Backends** - Integrated support for LM Studio (port 1234) and llama.cpp (port 8080) with automatic model list retrieval, plus local PyTorch fallback loading.
+## [1.0.4] - 2026-06-01
+- Keep Simple Signal as a clean base installer with no bundled extensions.
+- Preserve the extension platform while loading packaged-app extensions from the user-writable `%LOCALAPPDATA%\SimpleSignal\extensions` folder.
+- Add a generated extension uninstaller helper for removing user-installed extensions without touching the base app.
+- Keep installer/build artifacts out of the Git repository and publish the installer through GitHub Releases.

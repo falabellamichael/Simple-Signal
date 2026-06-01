@@ -24,6 +24,52 @@ from telemetry import get_gpu_info_data_sync, get_system_status as fetch_system_
 
 app = FastAPI(title="Simple Signal Web CLI")
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def is_packaged_backend() -> bool:
+    return "app-backend" in os.path.normpath(APP_DIR).split(os.sep)
+
+def resolve_extensions_dir() -> str:
+    configured = os.environ.get("SIMPLE_SIGNAL_EXTENSIONS_DIR")
+    if configured:
+        return os.path.abspath(os.path.expanduser(configured))
+
+    if is_packaged_backend():
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            return os.path.join(local_app_data, "SimpleSignal", "extensions")
+        return os.path.join(os.path.expanduser("~"), ".simple-signal", "extensions")
+
+    return os.path.join(APP_DIR, "extensions")
+
+extensions_dir = resolve_extensions_dir()
+
+# --- Dynamic Extensions Route Loader ---
+try:
+    os.makedirs(extensions_dir, exist_ok=True)
+except Exception as e:
+    print(f"[!] Failed to create extensions directory {extensions_dir}: {e}")
+
+if os.path.exists(extensions_dir):
+    import importlib.util
+    import sys
+    for ext_folder in os.listdir(extensions_dir):
+        ext_path = os.path.join(extensions_dir, ext_folder)
+        router_file = os.path.join(ext_path, "router.py")
+        if os.path.isdir(ext_path) and os.path.exists(router_file):
+            try:
+                if ext_path not in sys.path:
+                    sys.path.insert(0, ext_path)
+                spec = importlib.util.spec_from_file_location(f"ext_{ext_folder}_router", router_file)
+                ext_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(ext_module)
+                if hasattr(ext_module, "router"):
+                    app.include_router(ext_module.router, prefix=f"/api/extensions/{ext_folder}")
+                    print(f"[*] Loaded backend router for extension: {ext_folder}")
+            except Exception as e:
+                print(f"[!] Failed to load backend router for extension {ext_folder}: {e}")
+# ---------------------------------------
+
 # Enable CORS for local testing/development
 app.add_middleware(
     CORSMiddleware,
@@ -509,13 +555,6 @@ def select_backend(data: BackendSelect):
         "has_local_model": ai.model is not None
     }
 
-# Ensure extensions directory exists
-extensions_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extensions")
-try:
-    os.makedirs(extensions_dir, exist_ok=True)
-except Exception:
-    pass
-
 @app.get("/api/extensions")
 def list_extensions():
     """Scan the extensions directory for valid apps and return their manifests."""
@@ -535,13 +574,13 @@ def list_extensions():
                         extensions.append(manifest)
                 except Exception as e:
                     print(f"Error loading extension {ext_folder}: {e}")
-    return {"extensions": extensions}
+    return {"extensions": extensions, "extensions_dir": extensions_dir}
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if os.path.exists(extensions_dir):
-    app.mount("/extensions", StaticFiles(directory="extensions"), name="extensions")
+    app.mount("/extensions", StaticFiles(directory=extensions_dir), name="extensions")
 
 
 # Root endpoint serves index.html

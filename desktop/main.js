@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const http = require('http');
+const fs = require('fs');
 
 let mainWindow = null;
 let pyProcess = null;
@@ -14,6 +15,36 @@ const backendDir = isPackaged
   : path.join(__dirname, '..');
 
 const serverPath = path.join(backendDir, 'web_server.py');
+
+function getUninstallerPath() {
+  const packagedDir = path.dirname(app.getPath('exe'));
+  const candidates = [
+    path.join(packagedDir, 'SimpleSignalUninstaller.exe'),
+    path.join(__dirname, 'tools', 'SimpleSignalUninstaller.exe'),
+    path.join(__dirname, 'dist', 'win-unpacked', 'SimpleSignalUninstaller.exe')
+  ];
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+}
+
+function openSimpleSignalUninstaller() {
+  const uninstallerPath = getUninstallerPath();
+  if (!uninstallerPath) {
+    dialog.showErrorBox(
+      'Uninstaller Not Found',
+      'Simple Signal could not find SimpleSignalUninstaller.exe.\n\n' +
+      'Rebuild or reinstall Simple Signal, then try again.'
+    );
+    return;
+  }
+
+  const child = spawn(uninstallerPath, [], {
+    detached: true,
+    stdio: 'ignore',
+    cwd: path.dirname(uninstallerPath)
+  });
+  child.unref();
+}
 
 /**
  * Checks if a specific command or interpreter path exists and can run
@@ -193,6 +224,11 @@ function createWindow() {
     {
       label: 'File',
       submenu: [
+        {
+          label: 'Uninstall Simple Signal / Extensions...',
+          click: openSimpleSignalUninstaller
+        },
+        { type: 'separator' },
         { role: 'quit' }
       ]
     },
@@ -263,6 +299,10 @@ function createWindow() {
               mainWindow.webContents.send('open-extensions-modal');
             }
           }
+        },
+        {
+          label: 'Uninstall Extensions...',
+          click: openSimpleSignalUninstaller
         }
       ]
     },
@@ -308,7 +348,7 @@ ipcMain.on('open-extension', (event, { url, title, width, height }) => {
     height: height || 768,
     title: title || 'Extension',
     backgroundColor: '#0a0b10', // Consistent dark background
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

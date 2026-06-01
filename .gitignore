@@ -53,5 +53,14 @@ Thumbs.db
 # Electron / Desktop App
 desktop/node_modules/
 desktop/dist/
+desktop/build-uninstaller/
+desktop/tools/
+desktop/SimpleSignalUninstaller.spec
 
+# Generated installers / local run output
+*.exe
+*.blockmap
+*.nsis.7z
+stdout.txt
+stderr.txt
 

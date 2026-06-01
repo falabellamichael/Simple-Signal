@@ -1,12 +1,13 @@
 {
   "name": "simple-signal-desktop",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Desktop wrapper for Simple Signal CLI & Web Client",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "build:uninstaller": "powershell -ExecutionPolicy Bypass -File ./build-uninstaller.ps1",
+    "pack": "npm run build:uninstaller && electron-builder --dir",
+    "dist": "npm run build:uninstaller && electron-builder"
   },
   "keywords": [
     "ai",
@@ -41,9 +42,14 @@
           "web_search.py",
           "config.json",
           "requirements.txt",
-          "static/**/*",
-          "extensions/**/*"
+          "static/**/*"
         ]
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "tools/SimpleSignalUninstaller.exe",
+        "to": "SimpleSignalUninstaller.exe"
       }
     ],
     "win": {

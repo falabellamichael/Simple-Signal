@@ -1278,7 +1278,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             extensionsList.innerHTML = '';
             if (!data.extensions || data.extensions.length === 0) {
-                extensionsList.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No extensions found. Drop an extension folder into the <code>extensions/</code> directory.</p>';
+                const extensionPath = data.extensions_dir || 'the Simple Signal extensions folder';
+                extensionsList.innerHTML = `<p style="color: var(--text-muted); text-align: center;">No extensions found. Drop an extension folder into <code>${extensionPath}</code>.</p>`;
                 return;
             }
 
