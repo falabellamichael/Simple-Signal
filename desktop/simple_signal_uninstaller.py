@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 
 APP_NAME = "Simple Signal Desktop"
 UNINSTALLER_NAMES = (
+    "Uninstall Simple-Signal-Desktop.exe",
     "Uninstall Simple Signal Desktop.exe",
     "Uninstall SimpleSignal.exe",
     "Uninstall.exe",
@@ -123,7 +124,7 @@ def find_system_uninstaller():
     program_files_x86 = os.environ.get("ProgramFiles(x86)")
     for root in (local_app_data, program_files, program_files_x86):
         if root:
-            for app_dir_name in ("Simple Signal Desktop", "SimpleSignal"):
+            for app_dir_name in ("Simple-Signal-Desktop", "Simple Signal Desktop", "SimpleSignal"):
                 app_dir = Path(root) / app_dir_name
                 for name in UNINSTALLER_NAMES:
                     candidates.append(app_dir / name)

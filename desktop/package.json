@@ -1,6 +1,6 @@
 {
   "name": "simple-signal-desktop",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Desktop wrapper for Simple Signal CLI & Web Client",
   "main": "main.js",
   "scripts": {
@@ -24,7 +24,7 @@
   },
   "build": {
     "appId": "com.simplesignal.desktop",
-    "productName": "Simple Signal Desktop",
+    "productName": "Simple-Signal-Desktop",
     "publish": null,
     "files": [
       "main.js",
@@ -50,12 +50,17 @@
       {
         "from": "tools/SimpleSignalUninstaller.exe",
         "to": "SimpleSignalUninstaller.exe"
+      },
+      {
+        "from": "bootstrap-runtime.ps1",
+        "to": "bootstrap-runtime.ps1"
       }
     ],
     "win": {
       "target": "nsis"
     },
     "nsis": {
+      "include": "installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,

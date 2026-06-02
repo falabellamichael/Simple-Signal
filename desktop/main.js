@@ -79,19 +79,39 @@ async function getPythonCommand() {
   for (const venvPath of venvPaths) {
     if (require('fs').existsSync(venvPath)) {
       if (await checkPythonInterpreter(venvPath)) {
-        return venvPath;
+        return { command: venvPath, args: [] };
+      }
+    }
+  }
+
+  const localAppData = process.env.LOCALAPPDATA;
+  if (process.platform === 'win32' && localAppData) {
+    const localPythonPaths = [
+      path.join(localAppData, 'Programs', 'Python', 'Python311', 'python.exe'),
+      path.join(localAppData, 'Programs', 'Python', 'Python312', 'python.exe'),
+      path.join(localAppData, 'Programs', 'Python', 'Python310', 'python.exe')
+    ];
+
+    for (const pythonPath of localPythonPaths) {
+      if (fs.existsSync(pythonPath) && await checkPythonInterpreter(pythonPath)) {
+        return { command: pythonPath, args: [] };
       }
     }
   }
 
   // 2. Fallback to system PATH python
   if (await checkPythonInterpreter('python')) {
-    return 'python';
+    return { command: 'python', args: [] };
   }
 
   // 3. Try python3
   if (await checkPythonInterpreter('python3')) {
-    return 'python3';
+    return { command: 'python3', args: [] };
+  }
+
+  // 4. Try the Windows Python launcher even if PATH has not refreshed yet
+  if (process.platform === 'win32' && await checkPythonInterpreter('py', ['-3', '--version'])) {
+    return { command: 'py', args: ['-3'] };
   }
 
   return null;
@@ -140,10 +160,12 @@ function pollServer(callback, attempts = 0) {
 /**
  * Spawns the background python server process
  */
-function spawnServer(pythonCmd) {
-  console.log(`[Electron] Spawning python server at: ${serverPath} using interpreter: ${pythonCmd}`);
+function spawnServer(pythonRuntime) {
+  const pythonArgs = [...pythonRuntime.args, serverPath];
+  const commandLine = [pythonRuntime.command, ...pythonRuntime.args].join(' ');
+  console.log(`[Electron] Spawning python server at: ${serverPath} using interpreter: ${commandLine}`);
   
-  pyProcess = spawn(pythonCmd, [serverPath], {
+  pyProcess = spawn(pythonRuntime.command, pythonArgs, {
     cwd: backendDir,
     env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });

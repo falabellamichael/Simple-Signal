@@ -1,4 +1,9 @@
-﻿## [1.0.3] - 2026-05-30
+﻿## [1.0.5] - 2026-06-02
+- Install into the hyphenated `Simple-Signal-Desktop` application folder.
+- Add installer-time Python, pip, PATH, and `requirements.txt` bootstrap setup.
+- Improve desktop startup Python detection for fresh Windows installs.
+
+## [1.0.3] - 2026-05-30
 - 🧩 **Extension Apps SDK** - Simple Signal now acts as a host platform for external extensions, injecting a `window.SimpleSignal` SDK for direct access to AI chat, hardware telemetry, and web search.
 - 📦 **External Installer Support** - Simplified setup allowing external `setup.exe` applications to register natively into Simple Signal via the `extensions/` directory.
 - 🪟 **Isolated Window Management** - Extensions launch in secure, independent Electron windows with their own custom UI while seamlessly sharing Simple Signal
