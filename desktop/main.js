@@ -7,6 +7,54 @@ const fs = require('fs');
 let mainWindow = null;
 let pyProcess = null;
 const PORT = 8000;
+const STARTUP_TIMEOUT_MS = 90000;
+const SERVER_POLL_INTERVAL_MS = 500;
+const SERVER_REQUEST_TIMEOUT_MS = 1000;
+
+function getActiveWindow(fallbackWindow = mainWindow) {
+  return BrowserWindow.getFocusedWindow() || fallbackWindow;
+}
+
+function toggleDeveloperTools(targetWindow = getActiveWindow()) {
+  if (!targetWindow || targetWindow.isDestroyed()) return;
+  targetWindow.webContents.toggleDevTools();
+}
+
+function attachDeveloperToolsShortcuts(targetWindow) {
+  if (!targetWindow) return;
+
+  targetWindow.webContents.on('before-input-event', (event, input) => {
+    const isDevToolsShortcut =
+      input.type === 'keyDown' &&
+      (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i'));
+
+    if (isDevToolsShortcut) {
+      toggleDeveloperTools(targetWindow);
+      event.preventDefault();
+    }
+  });
+}
+
+function createDeveloperToolsMenuItem(targetWindow) {
+  return {
+    label: 'Developer Tools',
+    accelerator: 'F12',
+    click: () => toggleDeveloperTools(getActiveWindow(targetWindow))
+  };
+}
+
+function openTerminal() {
+  exec('start pwsh', (err) => {
+    if (err) {
+      exec('start powershell');
+    }
+  });
+}
+
+function runMainWindowScript(script) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.executeJavaScript(script).catch(() => {});
+}
 
 // Determine if app is running in packaged production mode
 const isPackaged = app.isPackaged;
@@ -121,38 +169,47 @@ async function getPythonCommand() {
  * Polls the backend server until it responds on port 8000
  */
 function checkServerReady(callback) {
+  let completed = false;
+  const finish = (ready) => {
+    if (completed) return;
+    completed = true;
+    callback(ready);
+  };
+
   const req = http.request({
     host: '127.0.0.1',
     port: PORT,
     path: '/api/system/status',
     method: 'GET',
-    timeout: 1000
+    timeout: SERVER_REQUEST_TIMEOUT_MS
   }, (res) => {
-    if (res.statusCode === 200) {
-      callback(true);
-    } else {
-      callback(false);
-    }
+    res.resume();
+    finish(res.statusCode === 200);
   });
 
   req.on('error', () => {
-    callback(false);
+    finish(false);
+  });
+
+  req.on('timeout', () => {
+    req.destroy();
+    finish(false);
   });
 
   req.end();
 }
 
-function pollServer(callback, attempts = 0) {
-  // Max 40 attempts (20 seconds total)
-  if (attempts > 40) {
+function pollServer(callback, startedAt = Date.now()) {
+  if (Date.now() - startedAt >= STARTUP_TIMEOUT_MS) {
     callback(false);
     return;
   }
+
   checkServerReady((ready) => {
     if (ready) {
       callback(true);
     } else {
-      setTimeout(() => pollServer(callback, attempts + 1), 500);
+      setTimeout(() => pollServer(callback, startedAt), SERVER_POLL_INTERVAL_MS);
     }
   });
 }
@@ -234,9 +291,12 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: true,
       preload: path.join(__dirname, 'preload.js')
     }
   });
+
+  attachDeveloperToolsShortcuts(mainWindow);
 
   // Load backend web URL
   mainWindow.loadURL(`http://127.0.0.1:${PORT}`);
@@ -246,6 +306,49 @@ function createWindow() {
     {
       label: 'File',
       submenu: [
+        {
+          label: 'New Chat',
+          accelerator: 'CommandOrControl+N',
+          click: () => runMainWindowScript(`
+            if (typeof handleNewChat === "function") {
+              handleNewChat();
+            } else {
+              document.getElementById("new-chat-btn")?.click();
+            }
+          `)
+        },
+        {
+          label: 'Clear Terminal',
+          accelerator: 'CommandOrControl+Shift+L',
+          click: () => runMainWindowScript(`
+            if (typeof clearTerminal === "function") {
+              clearTerminal();
+            }
+          `)
+        },
+        { type: 'separator' },
+        {
+          label: 'Manage Extensions...',
+          accelerator: 'CommandOrControl+Shift+E',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('open-extensions-modal');
+            }
+          }
+        },
+        {
+          label: 'Token Authentication...',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('open-token-modal');
+            }
+          }
+        },
+        {
+          label: 'Open Terminal',
+          click: openTerminal
+        },
+        { type: 'separator' },
         {
           label: 'Uninstall Simple Signal / Extensions...',
           click: openSimpleSignalUninstaller
@@ -273,7 +376,12 @@ function createWindow() {
       submenu: [
         { role: 'reload' },
         { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        createDeveloperToolsMenuItem(mainWindow),
+        {
+          label: 'Developer Tools (Ctrl+Shift+I)',
+          accelerator: 'CommandOrControl+Shift+I',
+          click: () => toggleDeveloperTools(getActiveWindow(mainWindow))
+        },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -283,15 +391,7 @@ function createWindow() {
         { type: 'separator' },
         {
           label: 'Terminal',
-          click: () => {
-            const { exec } = require('child_process');
-            // Try to open PowerShell Core (pwsh) first, fallback to Windows PowerShell
-            exec('start pwsh', (err) => {
-              if (err) {
-                exec('start powershell');
-              }
-            });
-          }
+          click: openTerminal
         },
         {
           label: 'Token Authentication',
@@ -374,9 +474,12 @@ ipcMain.on('open-extension', (event, { url, title, width, height }) => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: true,
       preload: path.join(__dirname, 'preload_extension.js')
     }
   });
+
+  attachDeveloperToolsShortcuts(extWindow);
 
   extWindow.loadURL(url);
 });
@@ -408,7 +511,7 @@ app.on('ready', async () => {
     } else {
       dialog.showErrorBox(
         'Backend Startup Timeout',
-        'The backend AI server failed to initialize or bind to port 8000 within 20 seconds.\n\n' +
+        'The backend AI server failed to initialize or bind to port 8000 within 90 seconds.\n\n' +
         'Please verify that port 8000 is not already in use by another application, and try restarting.'
       );
       killServerProcess(() => app.quit());

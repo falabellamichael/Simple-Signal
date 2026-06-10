@@ -11,6 +11,7 @@ import threading
 import time
 import subprocess
 import psutil
+import sys
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse, FileResponse
@@ -19,8 +20,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Import existing SimpleSignalAI capabilities
-from ai_cli import SimpleSignalAI, HAS_TRANSFORMERS
+from ai_cli import SimpleSignalAI
 from telemetry import get_gpu_info_data_sync, get_system_status as fetch_system_telemetry
+
+sys.modules.setdefault("web_server", sys.modules[__name__])
 
 app = FastAPI(title="Simple Signal Web CLI")
 
@@ -87,7 +90,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Fix Windows console UTF-8 issues
-import sys
 if sys.platform == 'win32':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -291,7 +293,7 @@ def generate_chat_stream(messages: List[Dict[str, str]]):
             yield f"❌ API Connection Error: {str(e)}"
 
     # 2. Local Transformers Mode
-    elif HAS_TRANSFORMERS and ai.model is not None and ai.tokenizer is not None:
+    elif ai.model is not None and ai.tokenizer is not None:
         try:
             from transformers import TextIteratorStreamer
             from threading import Thread
@@ -541,7 +543,7 @@ def select_backend(data: BackendSelect):
     elif data.backend == "local":
         ai.is_api = False
         ai.force_local = True
-        if ai.model is None and HAS_TRANSFORMERS:
+        if ai.model is None:
             # Load local model path/resources if configured
             ai.load_model()
     else:
@@ -594,4 +596,4 @@ if __name__ == "__main__":
     print("🚀 Simple Signal Web CLI is starting up...")
     print("👉 Open your browser at: http://localhost:8000")
     print("=" * 60 + "\n")
-    uvicorn.run("web_server:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

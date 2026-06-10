@@ -54,24 +54,65 @@ def load_env_file():
 # Load environment variables on startup
 load_env_file()
 
-# Try to import optional dependencies
-try:
-    import torch
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
+# Optional ML dependencies are imported lazily so the desktop backend can bind
+# its web server before loading heavyweight local-model libraries.
+torch = None
+torch_directml = None
+AutoTokenizer = None
+AutoModelForCausalLM = None
+HAS_TORCH = False
+HAS_DML = False
+HAS_TRANSFORMERS = False
 
-try:
-    import torch_directml
-    HAS_DML = torch_directml.is_available()
-except ImportError:
-    HAS_DML = False
 
-try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
-    HAS_TRANSFORMERS = True
-except ImportError:
-    HAS_TRANSFORMERS = False
+def ensure_torch() -> bool:
+    """Load PyTorch only when local model inference actually needs it."""
+    global torch, HAS_TORCH
+    if HAS_TORCH and torch is not None:
+        return True
+    try:
+        import torch as torch_module
+        torch = torch_module
+        HAS_TORCH = True
+        return True
+    except ImportError:
+        HAS_TORCH = False
+        return False
+
+
+def ensure_directml() -> bool:
+    """Load torch-directml lazily for callers that explicitly need it."""
+    global torch_directml, HAS_DML
+    if HAS_DML and torch_directml is not None:
+        return True
+    try:
+        import torch_directml as torch_directml_module
+        torch_directml = torch_directml_module
+        HAS_DML = torch_directml.is_available()
+        return HAS_DML
+    except ImportError:
+        HAS_DML = False
+        return False
+
+
+def ensure_transformers() -> bool:
+    """Load Transformers only after API backends and config checks are done."""
+    global AutoTokenizer, AutoModelForCausalLM, HAS_TRANSFORMERS
+    if HAS_TRANSFORMERS and AutoTokenizer is not None and AutoModelForCausalLM is not None:
+        return True
+    try:
+        from transformers import AutoTokenizer as tokenizer_cls, AutoModelForCausalLM as model_cls
+        AutoTokenizer = tokenizer_cls
+        AutoModelForCausalLM = model_cls
+        HAS_TRANSFORMERS = True
+        return True
+    except ImportError:
+        HAS_TRANSFORMERS = False
+        return False
+
+
+def has_transformers() -> bool:
+    return ensure_transformers()
 
 
 class SimpleSignalAI:
@@ -86,10 +127,7 @@ class SimpleSignalAI:
         # Note: DirectML (AMD GPU) is disabled for local PyTorch loading because the DirectML compiler
         # has known bugs with Qwen/Llama architectures, resulting in random gibberish.
         # AMD users should run the LM Studio local server (Vulkan/DirectML backend) which runs flawlessly.
-        if HAS_TORCH and torch.cuda.is_available():
-            self.device = "cuda"
-        else:
-            self.device = "cpu"
+        self.device = "cpu"
             
         self.is_api = False
         self.api_url = None
@@ -148,9 +186,9 @@ class SimpleSignalAI:
         api_token = os.environ.get("LM_API_TOKEN") or os.environ.get("SIGNAL_SHARE_LM_STUDIO_API_TOKEN")
         
         for host in ["localhost", "127.0.0.1"]:
-            # Query the root port URL (always returns 200 or 401 if running)
-            # to avoid triggering the 'Unexpected endpoint' warning logs in LM Studio.
-            test_url = f"http://{host}:1234/"
+            # Query the OpenAI-compatible models endpoint. LM Studio logs root
+            # requests as unexpected even when it returns 200.
+            test_url = f"http://{host}:1234/v1/models"
             url = f"http://{host}:1234/v1"
             try:
                 req = urllib.request.Request(test_url)
@@ -258,15 +296,20 @@ class SimpleSignalAI:
                 return True
 
         # 3. Fallback to local model loading via transformers
-        if not HAS_TRANSFORMERS:
-            print("\n⚠️  Transformers library not installed. Running in demo mode.\n")
-            return False
-        
         if self.model_path is None:
             print("ℹ️  No model path specified. Please set MODEL_PATH environment variable.")
             return False
+
+        if not ensure_transformers():
+            print("\n⚠️  Transformers library not installed. Running in demo mode.\n")
+            return False
+
+        if not ensure_torch():
+            print("\n⚠️  PyTorch library not installed. Running in demo mode.\n")
+            return False
         
         try:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
             model_dir = self.model_path
             gguf_file = None
 
@@ -333,7 +376,7 @@ class SimpleSignalAI:
             ]
             return self._call_api(messages, max_tokens)
             
-        if not HAS_TRANSFORMERS or self.model is None:
+        if self.model is None:
             # Demo mode - simple response
             demo_responses = [
                 "This is a demo response. To use real AI inference, install transformers and set MODEL_PATH.",
@@ -393,7 +436,7 @@ class SimpleSignalAI:
             chat_messages.extend(messages)
             return self._call_api(chat_messages, self.config["chat"]["max_tokens"])
 
-        if not HAS_TRANSFORMERS or self.model is None:
+        if self.model is None:
             return "Demo mode: Please install transformers and load a model for real inference."
         
         try:

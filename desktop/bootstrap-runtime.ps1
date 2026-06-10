@@ -1,6 +1,7 @@
 param(
     [string]$InstallDir,
-    [switch]$SkipRequirements
+    [switch]$SkipRequirements,
+    [switch]$Unattended
 )
 
 $ErrorActionPreference = "Stop"
@@ -212,9 +213,11 @@ try {
     }
 
     Write-Step "Runtime setup completed."
+    if (-not $Unattended) { Read-Host "Press Enter to exit..." }
     exit 0
 } catch {
     Write-Host "[Simple Signal Setup] ERROR: $($_.Exception.Message)"
+    if (-not $Unattended) { Read-Host "Press Enter to exit..." }
     exit 1
 } finally {
     try {

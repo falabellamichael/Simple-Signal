@@ -33,79 +33,101 @@ class PDH_FMT_COUNTERVALUE_DOUBLE(Structure):
         ("value", _Value)
     ]
 
-def get_gpu_info_data_sync():
+def get_gpu_info_data_sync(include_ml_backends=True):
     """Retrieve graphics cards list using PyTorch backends and fallback WMI video controllers"""
     gpu_list = []
     
     # 1. PyTorch CUDA
-    try:
-        import torch
-        if torch.cuda.is_available():
-            for i in range(torch.cuda.device_count()):
-                raw_name = torch.cuda.get_device_name(i)
+    if include_ml_backends:
+        try:
+            import torch
+            if torch.cuda.is_available():
+                for i in range(torch.cuda.device_count()):
+                    raw_name = torch.cuda.get_device_name(i)
+                    clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
+                    gpu_list.append({
+                        "name": clean_name,
+                        "backend": "CUDA (PyTorch)",
+                        "identifier": f"cuda:{i}",
+                        "status": "Available"
+                    })
+        except Exception:
+            pass
+
+    # 2. PyTorch DirectML
+    if include_ml_backends:
+        try:
+            import torch_directml
+            for i in range(torch_directml.device_count()):
+                raw_name = torch_directml.device_name(i)
                 clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
                 gpu_list.append({
                     "name": clean_name,
-                    "backend": "CUDA (PyTorch)",
-                    "identifier": f"cuda:{i}",
+                    "backend": "DirectML (PyTorch)",
+                    "identifier": f"privateuseone:{i}",
                     "status": "Available"
                 })
+        except Exception:
+            pass
+        
+    # 3. Query Windows controllers to find actual AMD/NVIDIA/Intel hardware name
+    lines = []
+    startupinfo = None
+    if os.name == 'nt':
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+    try:
+        out = subprocess.check_output(
+            ["wmic", "path", "win32_VideoController", "get", "name"],
+            text=True,
+            startupinfo=startupinfo,
+            stderr=subprocess.DEVNULL,
+            timeout=2.0
+        )
+        lines = [line.strip().replace('\x00', '').replace('\u0000', '').strip() for line in out.split("\n") if line.strip() and "Name" not in line]
     except Exception:
         pass
 
-    # 2. PyTorch DirectML
-    try:
-        import torch_directml
-        for i in range(torch_directml.device_count()):
-            raw_name = torch_directml.device_name(i)
-            clean_name = raw_name.replace('\x00', '').replace('\u0000', '').strip()
-            gpu_list.append({
-                "name": clean_name,
-                "backend": "DirectML (PyTorch)",
-                "identifier": f"privateuseone:{i}",
-                "status": "Available"
-            })
-    except Exception:
-        pass
-        
-    # 3. Query Windows controllers to find actual AMD/NVIDIA/Intel hardware name
-    try:
-        startupinfo = None
-        if os.name == 'nt':
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            
-        out = subprocess.check_output(
-            ["wmic", "path", "win32_VideoController", "get", "name"], 
-            text=True, 
-            startupinfo=startupinfo,
-            stderr=subprocess.DEVNULL
-        )
-        lines = [line.strip().replace('\x00', '').replace('\u0000', '').strip() for line in out.split("\n") if line.strip() and "Name" not in line]
-        
-        for name in lines:
-            if not name:
-                continue
-            # Deduplicate with already loaded ML backends
-            if any(name.lower() in g["name"].lower() or g["name"].lower() in name.lower() for g in gpu_list):
-                continue
-                
+    if not lines and os.name == 'nt':
+        try:
+            out = subprocess.check_output(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"
+                ],
+                text=True,
+                startupinfo=startupinfo,
+                stderr=subprocess.DEVNULL,
+                timeout=3.0
+            )
+            lines = [line.strip().replace('\x00', '').replace('\u0000', '').strip() for line in out.split("\n") if line.strip()]
+        except Exception:
+            pass
+
+    for name in lines:
+        if not name:
+            continue
+        # Deduplicate with already loaded ML backends
+        if any(name.lower() in g["name"].lower() or g["name"].lower() in name.lower() for g in gpu_list):
+            continue
+
+        backend_compat = "Vulkan / DirectML"
+        if "nvidia" in name.lower():
+            backend_compat = "CUDA / Vulkan / DirectML"
+        elif "amd" in name.lower() or "radeon" in name.lower():
+            backend_compat = "Vulkan (LM Studio) / DirectML"
+        elif "intel" in name.lower():
             backend_compat = "Vulkan / DirectML"
-            if "nvidia" in name.lower():
-                backend_compat = "CUDA / Vulkan / DirectML"
-            elif "amd" in name.lower() or "radeon" in name.lower():
-                backend_compat = "Vulkan (LM Studio) / DirectML"
-            elif "intel" in name.lower():
-                backend_compat = "Vulkan / DirectML"
-                
-            gpu_list.append({
-                "name": name,
-                "backend": backend_compat,
-                "identifier": "Physical Card",
-                "status": "Detected"
-            })
-    except Exception:
-        pass
+
+        gpu_list.append({
+            "name": name,
+            "backend": backend_compat,
+            "identifier": "Physical Card",
+            "status": "Detected"
+        })
         
     if not gpu_list:
         gpu_list.append({
@@ -126,6 +148,7 @@ class SystemTelemetryCollector:
         self.last_rebuild = 0.0
         self.rebuild_interval = 30.0  # seconds
         self.gpu_name = "N/A"
+        self.gpu_name_detected = False
         self.pdh = None
         
         if self.is_windows:
@@ -137,7 +160,6 @@ class SystemTelemetryCollector:
                 print(f"⚠️ Telemetry initialization warning (pdh.dll): {e}")
                 self.pdh = None
                 
-        self._detect_gpu_name()
         try:
             psutil.cpu_percent(interval=None)
         except:
@@ -229,12 +251,14 @@ class SystemTelemetryCollector:
 
     def _detect_gpu_name(self):
         try:
-            gpus = get_gpu_info_data_sync()
+            gpus = get_gpu_info_data_sync(include_ml_backends=False)
             if gpus:
                 physical_gpu = next((g for g in gpus if g["identifier"] != "Default" and "CPU" not in g["backend"]), gpus[0])
                 self.gpu_name = physical_gpu["name"]
         except Exception:
             self.gpu_name = "N/A"
+        finally:
+            self.gpu_name_detected = True
 
     def _get_gpu_utilization_pdh(self) -> float:
         if not self.pdh or not self.hQuery or not self.counters:
@@ -288,6 +312,9 @@ class SystemTelemetryCollector:
             return 0.0
 
     def get_gpu_metrics(self) -> dict:
+        if not self.gpu_name_detected:
+            self._detect_gpu_name()
+
         gpu_util = 0.0
         if self.is_windows and self.pdh and self.counters:
             gpu_util = self._get_gpu_utilization_pdh()

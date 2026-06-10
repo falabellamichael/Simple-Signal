@@ -42,7 +42,9 @@
           "web_search.py",
           "config.json",
           "requirements.txt",
-          "static/**/*"
+          "static/**/*",
+          "!extensions/**/*",
+          "!test_ext/**/*"
         ]
       }
     ],
